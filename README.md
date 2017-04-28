@@ -10,4 +10,4 @@ This repo will be for Python Modules for various Cisco Technologies:
  - ASAv - asa_apis.py
  - UCSD - ucsd_apis.py
 
- - Various functions not specific to a technology - utils.py
+ - Various Python functions not specific to a technology - utils.py
