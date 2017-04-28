@@ -29,6 +29,7 @@ def create_team(team_name):
     team_response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
     team_json = team_response.json()
     team_id = team_json['id']
+    print('\nCreated Spark Team with the name: ', team_name)
     return team_id
 
 
@@ -69,6 +70,7 @@ def create_room(room_name, team_name):
     room_response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
     room_json = room_response.json()
     room_number = room_json['id']
+    print('\nCreated Spark Room with the name: ', room_name, ' Spark Team ', team_name)
     return room_number
 
 
@@ -129,7 +131,7 @@ def delete_team(team_name):
     url = SPARK_URL + '/teams/' + team_id
     header = {'content-type': 'application/json', 'authorization': SPARK_AUTH}
     requests.delete(url, headers=header, verify=False)
-    print("Deleted Spark Team :  ", team_name)
+    print('\nDeleted Spark Team :  ', team_name)
 
 
 def last_room_user_message(room_name):
@@ -168,7 +170,7 @@ def post_room_message(room_name, message):
     url = SPARK_URL + '/messages'
     header = {'content-type': 'application/json', 'authorization': SPARK_AUTH}
     requests.post(url, data=json.dumps(payload), headers=header, verify=False)
-    print("Message posted :  ", message)
+    print('Message posted :  ', message)
 
 
 def post_room_file(room_name, file_name, file_type, file_path):

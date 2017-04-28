@@ -4,18 +4,12 @@
 
 # !/usr/bin/env python3
 
-import requests
-import json
+
 import requests.packages.urllib3
 import spark_apis
 import utils
 
-from requests_toolbelt import MultipartEncoder  # required to encode messages uploaded to Spark
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-
 from spark_apis_init import SPARK_AUTH, SPARK_URL
-
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)  # Disable insecure https warnings
 
 
 # declarations for team/room/membership
@@ -30,7 +24,8 @@ UTILVAR = [{'fg': '24'},{'25':'ab','356':'df'}]
 def main():
     utils.pprint(UTILVAR)
     spark_apis.create_team(SPARK_TEAM_NAME)
-    spark_apis.create_room(SPARK_ROOM_NAME,SPARK_TEAM_NAME)
+    spark_apis.create_room(SPARK_ROOM_NAME, SPARK_TEAM_NAME)
+    input('\nTo continue press any key')
     spark_apis.delete_team(SPARK_TEAM_NAME)
 
 if __name__ == '__main__':
