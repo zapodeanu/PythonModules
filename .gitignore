@@ -1,3 +1,7 @@
+
+.idea
+./spark_apis_init.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
