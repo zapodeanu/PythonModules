@@ -5,11 +5,8 @@
 # !/usr/bin/env python3
 
 
-import requests.packages.urllib3
 import spark_apis
 import utils
-
-from spark_apis_init import SPARK_AUTH, SPARK_URL
 
 
 # declarations for team/room/membership

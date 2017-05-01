@@ -10,7 +10,8 @@ import requests.packages.urllib3
 
 from requests_toolbelt import MultipartEncoder  # required to encode messages uploaded to Spark
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-from spark_apis_init import SPARK_AUTH, SPARK_URL
+
+from modules_init import SPARK_AUTH, SPARK_URL
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)  # Disable insecure https warnings
 
