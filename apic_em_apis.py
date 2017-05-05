@@ -41,7 +41,7 @@ def get_service_ticket():
 ticket = get_service_ticket()
 
 
-def locate_client(client_ip, ticket):
+def find_client(client_ip, ticket):
     """
     Locate a wired client device in the infrastructure by using the client IP address
     Call to APIC-EM - /host
@@ -105,6 +105,184 @@ def get_device_id(device_name, ticket):
         if device['hostname'] == device_name:
             device_id = device['id']
     return device_id
+
+
+def check_client_ip_address(client_ip):
+    """
+    The function will find out if APIC-EM has a client device configured with the specified IP address.
+    API call to /host
+    It will print if a client device exists or not.
+    :param client_ip: client IP address
+    :return: None
+    """
+
+    url = 'https://' + APIC_EM + '/host'
+    header = {'accept': 'application/json', 'X-Auth-Token': APIC_EM_TICKET}
+    payload = {'hostIp': client_ip}
+    host_response = requests.get(url, params=payload, headers=header, verify=False)
+    host_json = host_response.json()
+
+    # pprint(host_json)  # needed for troubleshooting
+
+    # verification if client found or not
+
+    if not host_json['response']:
+        print('The IP address', client_ip, 'is not used by any client devices')
+    else:
+        print('The IP address', client_ip, 'is used by a client device')
+        host_info = host_json['response'][0]
+        host_type = host_info['hostType']
+        host_vlan = host_info['vlanId']
+
+        # verification required for wireless clients, JSON output is different for wireless vs. wired clients
+
+        if host_type == 'wireless':
+
+            # info for wireless clients
+
+            apic_em_device_id = host_info['connectedNetworkDeviceId']
+            hostname = get_hostname_id(apic_em_device_id)[0]
+            device_type = get_hostname_id(apic_em_device_id)[1]
+            print('The IP address', client_ip, ', is connected to the network device:', hostname, ', model:', device_type, ', interface VLAN:', host_vlan)
+            interface_name = host_vlan
+        else:
+
+            # info for ethernet connected clients
+
+            interface_name = host_info['connectedInterfaceName']
+            apic_em_device_id = host_info['connectedNetworkDeviceId']
+            hostname = get_hostname_id(apic_em_device_id)[0]
+            device_type = get_hostname_id(apic_em_device_id)[1]
+            print('The IP address', client_ip, ', is connected to the network device:', hostname, ', model:',
+                  device_type, ', interface:', interface_name, ', VLAN:', host_vlan)
+
+
+def check_client_mac_address(client_mac):
+    """
+    The function will find out if APIC-EM has a client device configured with the specified MAC address.
+    API call to /host
+    It will print if a client device exists or not.
+    :param client_mac: client MAC address
+    :return: None
+    """
+
+    url = 'https://' + APIC_EM + '/host'
+    header = {'accept': 'application/json', 'X-Auth-Token': APIC_EM_TICKET}
+    payload = {'hostMac': client_mac}
+    host_response = requests.get(url, params=payload, headers=header, verify=False)
+    host_json = host_response.json()
+
+    # pprint(host_json)  # needed for troubleshooting
+
+    # verification if client found or not
+
+    if not host_json['response']:
+        print('The MAC address', client_mac, 'is not used by any client devices')
+    else:
+
+        # verification if format of MAC address is correct
+        # if MAC address is formatted correct, the 'response' is a list, with one item
+        # if MAC address is incorrect formatted, the 'response' is a dictionary, with the error messages
+
+        if type(host_json['response']) is list:
+            print('The MAC address', client_mac, 'is used by a client device')
+            host_info = host_json['response'][0]
+            host_type = host_info['hostType']
+            host_vlan = host_info['vlanId']
+            host_ip = host_info['hostIp']
+
+            # verification required for wireless clients, JSON output is different for wireless vs. wired clients
+
+            if host_type == 'wireless':
+
+                # info for wireless clients
+
+                apic_em_device_id = host_info['connectedNetworkDeviceId']
+                hostname = get_hostname_id(apic_em_device_id)[0]
+                device_type = get_hostname_id(apic_em_device_id)[1]
+                print('The MAC address', client_mac, ', is connected to the network device:', hostname, ', model:',
+                      device_type, ', interface VLAN:', host_vlan)
+            else:
+
+                # info for ethernet connected clients
+
+                interface_name = host_info['connectedInterfaceName']
+                apic_em_device_id = host_info['connectedNetworkDeviceId']
+                hostname = get_hostname_id(apic_em_device_id)[0]
+                device_type = get_hostname_id(apic_em_device_id)[1]
+                print('The MAC address', client_mac, ', is connected to the network device:', hostname, ', model:',
+                      device_type, ', interface:', interface_name, ', VLAN:', host_vlan)
+            print('The client with the MAC address', client_mac, 'has the IP address:', host_ip)
+        else:
+            print('The MAC address', client_mac, 'is not in correct format')
+
+
+def get_interface_name(interface_ip):
+    """
+    The function will find out if APIC-EM has a network device with the specified IP address configured on an interface
+    API call to /interface/ip-address/{ipAddress}, gets list of interfaces with the given IP address.
+    The JSON response is different for wireless AP's comparing with switches and routers.
+    There is a nested function, get_hostname_ip , to find out the information about wireless
+    AP's based on the management IP address
+    :param interface_ip: IP address to check
+    :return: network device hostname
+    """
+
+    url = 'https://' + APIC_EM + '/interface/ip-address/' + interface_ip
+    header = {'accept': 'application/json', 'X-Auth-Token': APIC_EM_TICKET}
+    interface_info_response = requests.get(url, headers=header, verify=False)
+    if not interface_info_response:
+        device_ip = interface_ip
+        url = 'https://' + APIC_EM + '/network-device/ip-address/' + device_ip  # verification required by
+        # wireless AP's IP address
+        header = {'accept': 'application/json', 'X-Auth-Token': APIC_EM_TICKET}
+        device_info_response = requests.get(url, headers=header, verify=False)
+        if not device_info_response:
+            print('The IP address ', interface_ip, ' is not configured on any network devices')
+        else:
+            hostname = get_hostname_ip(device_ip)[0]
+            device_type = get_hostname_ip(device_ip)[1]
+            print('The IP address ', device_ip, ' is configured on network device ', hostname, ',  ', device_type)
+            return hostname
+    else:
+        interface_info_json = interface_info_response.json()
+        interface_info = interface_info_json['response'][0]
+        interface_name = interface_info['portName']
+        device_id = interface_info['deviceId']
+        hostname = get_hostname_id(device_id)[0]
+        device_type = get_hostname_id(device_id)[1]
+        print('The IP address ', interface_ip, ' is configured on network device ', hostname, ',  ',
+              device_type, ',  interface ', interface_name)
+        return hostname
+
+
+def get_license_device(deviceid):
+    """
+    The function will find out the active licenses of the network device with the specified device ID
+    API call to sandboxapic.cisco.com/api/v1//license-info/network-device/{id}
+    :param deviceid: APIC-EM network device id
+    :return: license information for the device, as a list with all licenses
+    """
+
+    license_info = []
+    url = 'https://' + APIC_EM + '/license-info/network-device/' + deviceid
+    header = {'accept': 'application/json', 'X-Auth-Token': APIC_EM_TICKET}
+    payload = {'deviceid': deviceid}
+    device_response = requests.get(url, params=payload, headers=header, verify=False)
+    if device_response.status_code == 200:
+        device_json = device_response.json()
+        device_info = device_json['response']
+        # pprint(device_info)    # use this for printing info about each device
+        for licenses in device_info:
+            try:  # required to avoid errors due to some devices, for example Access Points,
+                # that do not have an "inuse" license.
+                if licenses.get('status') == 'INUSE':
+                    new_license = licenses.get('name')
+                    if new_license not in license_info:
+                        license_info.append(new_license)
+            except:
+                pass
+    return license_info
 
 
 def sync_device(device_name, ticket):
