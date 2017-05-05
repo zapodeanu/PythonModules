@@ -12,12 +12,12 @@ SPARK_AUTH = 'Bearer ' + 'Put Your Spark Token Here'
 
 # Meraki init info
 
-MERAKI_API_KEY = '6d5ca08abf9bcb0393513841950a3889aefd6577'  # meraki sandbox
+MERAKI_API_KEY = '6d5ca08abf9bcb0393513841950a3889aefd6577'  # Meraki sandbox
 MERAKI_URL = 'https://dashboard.meraki.com/api/v0'
 
 
 # APIC-EM init info
 
-EM_URL = 'https://sandboxapic.cisco.com//api/v1'
+EM_URL = 'https://sandboxapic.cisco.com//api/v1'  # APIC-EM Sandbox
 EM_USER = 'devnetuser'
 EM_PASSW = 'Cisco123!'
