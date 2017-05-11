@@ -1,6 +1,7 @@
 
 # developed by Gabi Zapodeanu, TSA, GSS, Cisco Systems
 
+# this module includes common utilized functions to create applications using Spark APIs
 
 # !/usr/bin/env python3
 

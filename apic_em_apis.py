@@ -3,7 +3,7 @@
 
 # !/usr/bin/env python3
 
-# this module include common utilized functions to create applications using APIC-EM APIs
+# this module includes common utilized functions to create applications using APIC-EM APIs
 
 import requests
 import json
