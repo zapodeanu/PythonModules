@@ -104,7 +104,7 @@ def add_team_membership(team_name, email_invite):
               Spark - /memberships to add membership
     :param team_name: The Spark team name
     :param email_invite: Spark user email to add to the team
-    :return: status for adding the user
+    :return: status for adding the user, by returning the email address
     """
 
     team_id = get_team_id(team_name)
