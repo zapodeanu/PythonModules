@@ -23,6 +23,12 @@ UTILVAR = [{'fg': '24'},{'25':'ab','356':'df'}]
 
 
 def main():
+    """
+    The test modules could be rub in demo more, printing output to console, or logging all debug level messages
+    to a file python_modules.log.
+    Enter 'y' to run in demo mode within 10 seconds from the 'run' command
+    :return: 
+    """
 
     # save the initial stdout
     initial_sys = sys.stdout
@@ -49,8 +55,9 @@ def main():
     spark_apis.create_team(SPARK_TEAM_NAME)
     spark_apis.create_room(SPARK_ROOM_NAME, SPARK_TEAM_NAME)
     spark_apis.post_room_message(SPARK_ROOM_NAME, 'How are you')
+    spark_apis.add_team_membership(SPARK_TEAM_NAME, 'gabriel.zapodeanu@gmail.com')
 
-    # input('\nTo continue press any key  ')
+    input('\nTo continue press any key  ')
     spark_apis.delete_team(SPARK_TEAM_NAME)
 
     # restore the stdout to initial value
