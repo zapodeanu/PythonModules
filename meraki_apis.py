@@ -79,14 +79,17 @@ def get_network_id(org_name, netw_name):
     return netw_id
 
 
-def get_sm_devices(network_id):
+def get_sm_devices(org_name, netw_name):
     """
-    This function will return the list of networks associated with the Meraki Network ID
-    API call to /networks/{organization_id]/sm/devices
-    :param network_id: Meraki network ID
-    :return: list with all the SM devices
+    This function will return the list of SM devices associated with the Meraki Network ID
+    Find the Meraki network id using the organization name and network name
+    Followed by API call to /networks/{organization_id]/sm/devices
+    :param org_name: Meraki organization name
+    :param netw_name: Meraki network name
+    :return: list with all the SM devices, including all details
     """
 
+    network_id = get_network_id(org_name, netw_name)
     url = MERAKI_URL + '/networks/' + str(network_id) + '/sm/devices?fields=phoneNumber,location'
     header = {'content-type': 'application/json', 'X-Cisco-Meraki-API-Key': MERAKI_API_KEY}
     sm_devices_response = requests.get(url, headers=header, verify=False)
@@ -94,12 +97,15 @@ def get_sm_devices(network_id):
     return sm_devices_json
 
 
-def get_devices(network_id):
+def get_network_devices(org_name, netw_name):
     """
     This function will return a list with all the network devices associated with the Meraki Network Id
-    :param network_id: Meraki Network ID
+    :param org_name: Meraki organization name
+    :param netw_name: Meraki network name
     :return: list with all the devices
     """
+
+    network_id = get_network_id(org_name, netw_name)
     url = MERAKI_URL + '/networks/' + str(network_id) + '/devices'
     header = {'content-type': 'application/json', 'X-Cisco-Meraki-API-Key': MERAKI_API_KEY}
     devices_response = requests.get(url, headers=header, verify=False)
@@ -137,12 +143,15 @@ def get_location_cell(sm_devices_list, user_cell):
     return location
 
 
-def get_ssids(network_id):
+def get_ssids(org_name, netw_name):
     """
     This function will return the Meraki Network id list of configured SSIDs
-    :param network_id: Meraki Network id
+    :param org_name: Meraki organization name
+    :param netw_name: Meraki network name
     :return: list of SSIDs
     """
+
+    network_id = get_network_id(org_name, netw_name)
     url = MERAKI_URL + '/networks/' + str(network_id) + '/ssids'
     header = {'content-type': 'application/json', 'X-Cisco-Meraki-API-Key': MERAKI_API_KEY}
     ssids_response = requests.get(url, headers=header, verify=False)
@@ -156,29 +165,56 @@ def get_ssids(network_id):
     return ssids_list
 
 
-def meraki_enable_ssid(network_id,ssid_number):
+def enable_ssid(org_name, netw_name, ssid_name):
     """
-    This function will enable the SSID with the {ssid_number}, from the Meraki network with the network_id
-    :param network_id: Meraki network id
-    :param ssid_number: Meraki SSID number
-    :return:
+    This function will enable the SSID with the {ssid_name}, from the Meraki network with the {netw_name}
+    :param org_name: Meraki organization name
+    :param netw_name: Meraki network name
+    :param ssid_name: Meraki SSID name
+    :return: ssid status - Enabled or Disabled
     """
+
+    network_id = get_network_id(org_name, netw_name)
+    meraki_ssdis = get_ssids(org_name, netw_name)
+    for ssid in meraki_ssdis:
+        if ssid['name'] == ssid_name:
+            ssid_number = ssid['number']
+
     url = MERAKI_URL + '/networks/' + str(network_id) + '/ssids/' + str(ssid_number)
     payload = {'enabled': True}
     header = {'content-type': 'application/json', 'X-Cisco-Meraki-API-Key': MERAKI_API_KEY}
     enable_ssid_response = requests.put(url, data=json.dumps(payload), headers=header, verify=False)
     enable_ssid_json = enable_ssid_response.json()
-    return enable_ssid_json
+    if enable_ssid_json['enabled'] == True:
+        ssid_status = 'Enabled'
+    else:
+        ssid_status = 'Disabled'
+    return ssid_status
 
 
-def main():
-    organizations = get_organizations()
-    utils.pprint(organizations)
-    print(get_organization_id('Meraki Live Demo'))
-    print(get_networks('Meraki Live Demo'))
-    utils.pprint(get_networks('Meraki Live Demo'))
-    print(get_network_id('Meraki Live Demo','San Francisco'))
+def disable_ssid(org_name, netw_name, ssid_name):
+    """
+    This function will disable the SSID with the {ssid_name}, from the Meraki network with the {netw_name}
+    :param org_name: Meraki organization name
+    :param netw_name: Meraki network name
+    :param ssid_name: Meraki SSID name
+    :return: ssid status - Enabled or Disabled
+    """
 
+    network_id = get_network_id(org_name, netw_name)
+    meraki_ssdis = get_ssids(org_name, netw_name)
+    for ssid in meraki_ssdis:
+        if ssid['name'] == ssid_name:
+            ssid_number = ssid['number']
 
-if __name__ == '__main__':
-    main()
+    url = MERAKI_URL + '/networks/' + str(network_id) + '/ssids/' + str(ssid_number)
+    payload = {'enabled': False}
+    header = {'content-type': 'application/json', 'X-Cisco-Meraki-API-Key': MERAKI_API_KEY}
+    enable_ssid_response = requests.put(url, data=json.dumps(payload), headers=header, verify=False)
+    enable_ssid_json = enable_ssid_response.json()
+    if enable_ssid_json['enabled'] == True:
+        ssid_status = 'Enabled'
+    else:
+        ssid_status = 'Disabled'
+    return ssid_status
+
