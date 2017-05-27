@@ -186,9 +186,9 @@ def enable_ssid(org_name, netw_name, ssid_name):
     enable_ssid_response = requests.put(url, data=json.dumps(payload), headers=header, verify=False)
     enable_ssid_json = enable_ssid_response.json()
     if enable_ssid_json['enabled'] == True:
-        ssid_status = 'Enabled'
+        ssid_status = 'Enabled'  # return Enabled status
     else:
-        ssid_status = 'Disabled'
+        ssid_status = 'Disabled'  # return Disabled status
     return ssid_status
 
 
@@ -217,4 +217,5 @@ def disable_ssid(org_name, netw_name, ssid_name):
     else:
         ssid_status = 'Disabled'
     return ssid_status
+
 
