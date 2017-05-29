@@ -44,10 +44,10 @@ UTILVAR = [{'fg': '24'},{'25':'ab','356':'df'}]
 
 def main():
     """
-    The test modules could be rub in demo more, printing output to console, or logging all debug level messages
-    to a file python_modules.log.
-    Enter 'y' to run in demo mode within 10 seconds from the 'run' command
-    :return: 
+    The test module run in two modes:
+    - demo mode - printing output to console
+    - debugging mode - printing and logging debug level messages to a file python_modules.log.
+    User input is required to select demo or debugging mode
     """
 
     # save the initial stdout
