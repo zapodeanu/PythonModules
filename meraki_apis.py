@@ -237,4 +237,3 @@ def disable_ssid(org_name, netw_name, ssid_name):
         ssid_status = 'Disabled'   # return Disabled status
     return ssid_status
 
-
