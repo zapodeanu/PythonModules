@@ -99,7 +99,7 @@ def get_sm_devices(org_name, netw_name):
 
 def get_network_devices(org_name, netw_name):
     """
-    This function will return a list with all the network devices associated with the Meraki Network Id
+    This function will return a list with all the info for the network devices associated with the Meraki Network
     :param org_name: Meraki organization name
     :param netw_name: Meraki network name
     :return: list with all the devices
@@ -111,6 +111,25 @@ def get_network_devices(org_name, netw_name):
     devices_response = requests.get(url, headers=header, verify=False)
     devices_json = devices_response.json()
     return devices_json
+
+
+def get_sn_network_devices(org_name, netw_name):
+    """
+    This function will return a list with all the Serial Numbers for network devices associated with the Meraki Network
+    :param org_name: Meraki organization name
+    :param netw_name: Meraki network name
+    :return: list with all the devices
+    """
+
+    sn_list = []
+    network_id = get_network_id(org_name, netw_name)
+    url = MERAKI_URL + '/networks/' + str(network_id) + '/devices'
+    header = {'content-type': 'application/json', 'X-Cisco-Meraki-API-Key': MERAKI_API_KEY}
+    devices_response = requests.get(url, headers=header, verify=False)
+    devices_json = devices_response.json()
+    for device in devices_json:
+        sn_list.append(device['serial'])
+    return sn_list
 
 
 def get_user_cell(users_info, email):
