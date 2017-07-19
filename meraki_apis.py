@@ -1,9 +1,12 @@
 
-# developed by Gabi Zapodeanu, TSA, GSS, Cisco Systems
+# developed by Gabi Zapodeanu, TSA, GPO, Cisco Systems
+
 
 # !/usr/bin/env python3
 
+
 # this module includes common utilized functions to create applications using Meraki APIs
+
 
 import requests
 import json
@@ -122,14 +125,61 @@ def get_sn_network_devices(org_name, netw_name):
     """
 
     sn_list = []
-    network_id = get_network_id(org_name, netw_name)
-    url = MERAKI_URL + '/networks/' + str(network_id) + '/devices'
-    header = {'content-type': 'application/json', 'X-Cisco-Meraki-API-Key': MERAKI_API_KEY}
-    devices_response = requests.get(url, headers=header, verify=False)
-    devices_json = devices_response.json()
-    for device in devices_json:
+    all_devices = get_network_devices(org_name, netw_name)
+    for device in all_devices:
         sn_list.append(device['serial'])
     return sn_list
+
+
+def get_clients(network_device_sn, timespan):
+    """
+    This function will return a list with all the info for clients associated with the Meraki network device with
+    the SN {network_device_sn}, during the timespan
+    :param network_device_sn: Meraki network device serial number
+    :param timespan: timespan for which to collect data
+    :return: list with all the client info
+    """
+
+    url = MERAKI_URL + '/devices/' + network_device_sn + '/clients?timespan=' + str(timespan)
+    header = {'content-type': 'application/json', 'X-Cisco-Meraki-API-Key': MERAKI_API_KEY}
+    clients_response = requests.get(url, headers=header, verify=False)
+    clients_json = clients_response.json()
+    return clients_json
+
+
+def get_mac_clients(network_device_sn, timespan):
+    """
+    This function will return a list with all the clients MAC addresses associated with the Meraki network device with
+    the SN {network_device_sn}, during the timespan
+    :param network_device_sn: Meraki network device serial number
+    :param timespan: timespan for which to collect data
+    :return: list with all the client info
+    """
+
+    client_mac_list = []
+    clients = get_clients(network_device_sn, timespan)
+    for client in clients:
+        client_mac_list.append(client['mac'])
+    return client_mac_list
+
+
+def get_all_mac_clients(org_name, netw_name, timespan):
+    """
+    This function will return a list with all the clients MAC addresses associated with the entire Meraki Network,
+    during the timespan
+    :param org_name: Meraki organization name
+    :param netw_name: Meraki network name
+    :param timespan: timespan for which to collect data
+    :return: list with all the client info
+    """
+
+    meraki_sn_list = get_sn_network_devices(org_name,netw_name)
+    client_mac_list = []
+    for sn in meraki_sn_list:
+        clients = get_clients(sn, timespan)
+        for client in clients:
+            client_mac_list.append(client['mac'])
+    return client_mac_list
 
 
 def get_user_cell(users_info, email):
@@ -147,17 +197,20 @@ def get_user_cell(users_info, email):
     return user_cell
 
 
-def get_location_cell(sm_devices_list, user_cell):
+def get_location_cell(org_name, netw_name, user_cell):
     """
-    This function will locate the user based on his cell phone number
-    :param sm_devices_list: the list of Meraki SM devices
+    This function will locate the user based on his cell phone number. This use belongs to the specified
+    Meraki Organization and Network
+    :param org_name: Meraki organization name
+    :param netw_name: Meraki network name
     :param user_cell: user cell phone number
     :return: the user location
     """
+
     location = None
+    sm_devices_list = get_sm_devices(org_name, netw_name)
     for device in sm_devices_list:
         if device['phoneNumber'] == user_cell:
-            pprint(device)
             location = device['location']
     return location
 
@@ -236,4 +289,5 @@ def disable_ssid(org_name, netw_name, ssid_name):
     else:
         ssid_status = 'Disabled'   # return Disabled status
     return ssid_status
+
 

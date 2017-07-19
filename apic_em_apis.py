@@ -1,21 +1,24 @@
 
-# developed by Gabi Zapodeanu, TSA, GSS, Cisco Systems
+# developed by Gabi Zapodeanu, TSA, GPO, Cisco Systems
+
 
 # !/usr/bin/env python3
 
+
 # this module includes common utilized functions to create applications using APIC-EM APIs
+
 
 import requests
 import json
 import utils
+import lxml
+import xml.dom.minidom
 
 from modules_init import EM_URL, EM_USER, EM_PASSW
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)  # Disable insecure https warnings
-
-
 
 
 def get_service_ticket():
@@ -80,12 +83,14 @@ def get_hostname_id(device_id, ticket):
     """
 
     url = EM_URL + '/network-device/' + device_id
-    header = {'accept': 'application/json', 'X-Auth-Token': ticket}
+    header = {'accept': 'application/xml', 'X-Auth-Token': ticket}
     hostname_response = requests.get(url, headers=header, verify=False)
-    hostname_json = hostname_response.json()
-    hostname = hostname_json['response']['hostname']
-    devicetype = hostname_json['response']['type']
-    return hostname, devicetype
+    print(hostname_response)
+    #hostname_json = hostname_response.json()
+    #utils.pprint(hostname_json)
+    #hostname = hostname_json['response']['hostname']
+    #devicetype = hostname_json['response']['type']
+    #return hostname, devicetype
 
 
 def get_device_id(device_name, ticket):
@@ -359,3 +364,7 @@ def get_path_visualisation_info(path_id, ticket):
         path_list.append(path_info['request']['destIP'])
     return path_status, path_list
 
+
+hostn = get_hostname_id('6ce631db-9212-4587-867f-b8f3aed1702d',ticket)
+
+utils.pprint(hostn)
