@@ -1,0 +1,105 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module apic_em_apis</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>apic_em_apis</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/Users/gzapodea/PythonCode/PythonModules/apic_em_apis.py">/Users/gzapodea/PythonCode/PythonModules/apic_em_apis.py</a></font></td></tr></table>
+    <p><tt>#&nbsp;developed&nbsp;by&nbsp;Gabi&nbsp;Zapodeanu,&nbsp;TSA,&nbsp;GPO,&nbsp;Cisco&nbsp;Systems</tt></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="json.html">json</a><br>
+</td><td width="25%" valign=top><a href="requests.html">requests</a><br>
+</td><td width="25%" valign=top><a href="utils.html">utils</a><br>
+</td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#eeaa77">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt><a name="-check_client_ip_address"><strong>check_client_ip_address</strong></a>(client_ip, ticket)</dt><dd><tt>The&nbsp;function&nbsp;will&nbsp;find&nbsp;out&nbsp;if&nbsp;APIC-EM&nbsp;has&nbsp;a&nbsp;client&nbsp;device&nbsp;configured&nbsp;with&nbsp;the&nbsp;specified&nbsp;IP&nbsp;address.<br>
+API&nbsp;call&nbsp;to&nbsp;/host<br>
+It&nbsp;will&nbsp;print&nbsp;if&nbsp;a&nbsp;client&nbsp;device&nbsp;exists&nbsp;or&nbsp;not.<br>
+:param&nbsp;client_ip:&nbsp;client&nbsp;IP&nbsp;address<br>
+:param&nbsp;ticket:&nbsp;APIC-EM&nbsp;ticket<br>
+:return:&nbsp;None</tt></dd></dl>
+ <dl><dt><a name="-check_client_mac_address"><strong>check_client_mac_address</strong></a>(client_mac, ticket)</dt><dd><tt>The&nbsp;function&nbsp;will&nbsp;find&nbsp;out&nbsp;if&nbsp;APIC-EM&nbsp;has&nbsp;a&nbsp;client&nbsp;device&nbsp;configured&nbsp;with&nbsp;the&nbsp;specified&nbsp;MAC&nbsp;address.<br>
+API&nbsp;call&nbsp;to&nbsp;/host<br>
+It&nbsp;will&nbsp;print&nbsp;if&nbsp;a&nbsp;client&nbsp;device&nbsp;exists&nbsp;or&nbsp;not.<br>
+:param&nbsp;client_mac:&nbsp;client&nbsp;MAC&nbsp;address<br>
+:param&nbsp;ticket:&nbsp;APIC-EM&nbsp;ticket<br>
+:return:&nbsp;None</tt></dd></dl>
+ <dl><dt><a name="-create_path_visualisation"><strong>create_path_visualisation</strong></a>(src_ip, dest_ip, ticket)</dt><dd><tt>This&nbsp;function&nbsp;will&nbsp;create&nbsp;a&nbsp;new&nbsp;Path&nbsp;Visualisation&nbsp;between&nbsp;the&nbsp;source&nbsp;IP&nbsp;address&nbsp;{src_ip}&nbsp;and&nbsp;the<br>
+destination&nbsp;IP&nbsp;address&nbsp;{dest_ip}<br>
+API&nbsp;call&nbsp;to&nbsp;/flow-analysis<br>
+:param&nbsp;src_ip:&nbsp;Source&nbsp;IP&nbsp;address<br>
+:param&nbsp;dest_ip:&nbsp;Destination&nbsp;IP&nbsp;address<br>
+:param&nbsp;ticket:&nbsp;APIC-EM&nbsp;ticket<br>
+:return:&nbsp;APIC-EM&nbsp;path&nbsp;visualisation&nbsp;id</tt></dd></dl>
+ <dl><dt><a name="-find_client"><strong>find_client</strong></a>(client_ip, ticket)</dt><dd><tt>Locate&nbsp;a&nbsp;wired&nbsp;client&nbsp;device&nbsp;in&nbsp;the&nbsp;infrastructure&nbsp;by&nbsp;using&nbsp;the&nbsp;client&nbsp;IP&nbsp;address<br>
+Call&nbsp;to&nbsp;APIC-EM&nbsp;-&nbsp;/host<br>
+:param&nbsp;client_ip:&nbsp;Client&nbsp;IP&nbsp;Address<br>
+:param&nbsp;ticket:&nbsp;APIC-EM&nbsp;ticket<br>
+:return:&nbsp;hostname,&nbsp;interface_name,&nbsp;vlan_Id</tt></dd></dl>
+ <dl><dt><a name="-get_device_id"><strong>get_device_id</strong></a>(device_name, ticket)</dt><dd><tt>This&nbsp;function&nbsp;will&nbsp;find&nbsp;the&nbsp;APIC-EM&nbsp;device&nbsp;id&nbsp;for&nbsp;the&nbsp;device&nbsp;with&nbsp;the&nbsp;name&nbsp;{device_name}<br>
+API&nbsp;call&nbsp;to&nbsp;/network-device<br>
+:param&nbsp;device_name:&nbsp;device&nbsp;hostname<br>
+:param&nbsp;ticket:&nbsp;APIC-EM&nbsp;ticket<br>
+:return:&nbsp;APIC-EM&nbsp;device&nbsp;id</tt></dd></dl>
+ <dl><dt><a name="-get_hostname_id"><strong>get_hostname_id</strong></a>(device_id, ticket)</dt><dd><tt>Find&nbsp;out&nbsp;the&nbsp;hostname&nbsp;of&nbsp;the&nbsp;network&nbsp;device&nbsp;with&nbsp;the&nbsp;specified&nbsp;device&nbsp;ID<br>
+Call&nbsp;to&nbsp;APIC-EM&nbsp;-&nbsp;network-device/{id}<br>
+:param&nbsp;device_id:&nbsp;APIC-EM&nbsp;device&nbsp;Id<br>
+:param&nbsp;ticket:&nbsp;APIC-EM&nbsp;ticket<br>
+:return:&nbsp;hostname&nbsp;and&nbsp;the&nbsp;device&nbsp;type&nbsp;of&nbsp;the&nbsp;network&nbsp;device</tt></dd></dl>
+ <dl><dt><a name="-get_hostname_ip"><strong>get_hostname_ip</strong></a>(device_ip, ticket)</dt><dd><tt>The&nbsp;function&nbsp;will&nbsp;find&nbsp;out&nbsp;the&nbsp;hostname&nbsp;of&nbsp;the&nbsp;network&nbsp;device&nbsp;with&nbsp;the&nbsp;specified&nbsp;management&nbsp;IP&nbsp;address<br>
+API&nbsp;call&nbsp;to&nbsp;/network-device/ip-address/{ip-address}<br>
+:param&nbsp;device_ip:&nbsp;IP&nbsp;address&nbsp;to&nbsp;check<br>
+:param&nbsp;ticket:&nbsp;APIC-EM&nbsp;ticket<br>
+:return:&nbsp;network&nbsp;device&nbsp;hostname&nbsp;and&nbsp;type</tt></dd></dl>
+ <dl><dt><a name="-get_interface_name"><strong>get_interface_name</strong></a>(interface_ip, ticket)</dt><dd><tt>The&nbsp;function&nbsp;will&nbsp;find&nbsp;out&nbsp;if&nbsp;APIC-EM&nbsp;has&nbsp;a&nbsp;network&nbsp;device&nbsp;with&nbsp;the&nbsp;specified&nbsp;IP&nbsp;address&nbsp;configured&nbsp;on&nbsp;an&nbsp;interface<br>
+API&nbsp;call&nbsp;to&nbsp;/interface/ip-address/{ipAddress},&nbsp;gets&nbsp;list&nbsp;of&nbsp;interfaces&nbsp;with&nbsp;the&nbsp;given&nbsp;IP&nbsp;address.<br>
+The&nbsp;JSON&nbsp;response&nbsp;is&nbsp;different&nbsp;for&nbsp;wireless&nbsp;AP's&nbsp;comparing&nbsp;with&nbsp;switches&nbsp;and&nbsp;routers.<br>
+There&nbsp;is&nbsp;a&nbsp;nested&nbsp;function,&nbsp;get_hostname_ip&nbsp;,&nbsp;to&nbsp;find&nbsp;out&nbsp;the&nbsp;information&nbsp;about&nbsp;wireless<br>
+AP's&nbsp;based&nbsp;on&nbsp;the&nbsp;management&nbsp;IP&nbsp;address<br>
+:param&nbsp;interface_ip:&nbsp;IP&nbsp;address&nbsp;to&nbsp;check<br>
+:param&nbsp;ticket:&nbsp;APIC-EM&nbsp;ticket<br>
+:return:&nbsp;network&nbsp;device&nbsp;hostname</tt></dd></dl>
+ <dl><dt><a name="-get_license_device"><strong>get_license_device</strong></a>(deviceid, ticket)</dt><dd><tt>The&nbsp;function&nbsp;will&nbsp;find&nbsp;out&nbsp;the&nbsp;active&nbsp;licenses&nbsp;of&nbsp;the&nbsp;network&nbsp;device&nbsp;with&nbsp;the&nbsp;specified&nbsp;device&nbsp;ID<br>
+API&nbsp;call&nbsp;to&nbsp;/license-info/network-device/{id}<br>
+:param&nbsp;deviceid:&nbsp;APIC-EM&nbsp;network&nbsp;device&nbsp;id<br>
+:param&nbsp;ticket:&nbsp;APIC-EM&nbsp;ticket<br>
+:return:&nbsp;license&nbsp;information&nbsp;for&nbsp;the&nbsp;device,&nbsp;as&nbsp;a&nbsp;list&nbsp;with&nbsp;all&nbsp;licenses</tt></dd></dl>
+ <dl><dt><a name="-get_path_visualisation_info"><strong>get_path_visualisation_info</strong></a>(path_id, ticket)</dt><dd><tt>This&nbsp;function&nbsp;will&nbsp;return&nbsp;the&nbsp;path&nbsp;visualisation&nbsp;details&nbsp;for&nbsp;the&nbsp;APIC-EM&nbsp;path&nbsp;visualisation&nbsp;{path_id}<br>
+API&nbsp;call&nbsp;to&nbsp;/flow-analysis/{path_id}<br>
+:param&nbsp;path_id:&nbsp;APIC-EM&nbsp;path&nbsp;visualisation&nbsp;id<br>
+:param&nbsp;ticket:&nbsp;APIC-EM&nbsp;ticket<br>
+:return:&nbsp;Path&nbsp;visualisation&nbsp;details&nbsp;in&nbsp;a&nbsp;list&nbsp;[device,interface_out,interface_in,device...]</tt></dd></dl>
+ <dl><dt><a name="-get_service_ticket"><strong>get_service_ticket</strong></a>(username, password)</dt><dd><tt>Create&nbsp;the&nbsp;authorization&nbsp;ticket&nbsp;required&nbsp;to&nbsp;access&nbsp;APIC-EM<br>
+Call&nbsp;to&nbsp;APIC-EM&nbsp;-&nbsp;/ticket<br>
+:param&nbsp;username:&nbsp;the&nbsp;username<br>
+:param&nbsp;password:&nbsp;the&nbsp;password<br>
+:return:&nbsp;ticket</tt></dd></dl>
+ <dl><dt><a name="-sync_device"><strong>sync_device</strong></a>(device_name, ticket)</dt><dd><tt>This&nbsp;function&nbsp;will&nbsp;sync&nbsp;the&nbsp;device&nbsp;configuration&nbsp;from&nbsp;the&nbsp;device&nbsp;with&nbsp;the&nbsp;name&nbsp;{device_name}<br>
+API&nbsp;call&nbsp;to&nbsp;/network-device/sync<br>
+:param&nbsp;device_name:&nbsp;device&nbsp;hostname<br>
+:param&nbsp;ticket:&nbsp;APIC-EM&nbsp;ticket<br>
+:return:&nbsp;the&nbsp;response,&nbsp;202&nbsp;if&nbsp;sync&nbsp;initiated</tt></dd></dl>
+</td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>EM_URL</strong> = 'https://sandboxapic.cisco.com/api/v1'</td></tr></table>
+</body></html>
