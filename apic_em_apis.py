@@ -91,7 +91,7 @@ def get_hostname_id(device_id, ticket):
 def get_hostname_ip(device_ip, ticket):
     """
     The function will find out the hostname of the network device with the specified management IP address
-    API call to sandboxapic.cisco.com/api/v1/network-device/ip-address/{ip-address}
+    API call to /network-device/ip-address/{ip-address}
     :param device_ip: IP address to check
     :param ticket: APIC-EM ticket
     :return: network device hostname and type
@@ -109,6 +109,7 @@ def get_hostname_ip(device_ip, ticket):
 def get_device_id(device_name, ticket):
     """
     This function will find the APIC-EM device id for the device with the name {device_name}
+    API call to /network-device
     :param device_name: device hostname
     :param ticket: APIC-EM ticket
     :return: APIC-EM device id
@@ -273,7 +274,7 @@ def get_interface_name(interface_ip, ticket):
 def get_license_device(deviceid, ticket):
     """
     The function will find out the active licenses of the network device with the specified device ID
-    API call to sandboxapic.cisco.com/api/v1//license-info/network-device/{id}
+    API call to /license-info/network-device/{id}
     :param deviceid: APIC-EM network device id
     :param ticket: APIC-EM ticket
     :return: license information for the device, as a list with all licenses
@@ -303,6 +304,7 @@ def get_license_device(deviceid, ticket):
 def sync_device(device_name, ticket):
     """
     This function will sync the device configuration from the device with the name {device_name}
+    API call to /network-device/sync
     :param device_name: device hostname
     :param ticket: APIC-EM ticket
     :return: the response, 202 if sync initiated
@@ -320,6 +322,7 @@ def create_path_visualisation(src_ip, dest_ip, ticket):
     """
     This function will create a new Path Visualisation between the source IP address {src_ip} and the
     destination IP address {dest_ip}
+    API call to /flow-analysis
     :param src_ip: Source IP address
     :param dest_ip: Destination IP address
     :param ticket: APIC-EM ticket
@@ -342,7 +345,8 @@ def create_path_visualisation(src_ip, dest_ip, ticket):
 
 def get_path_visualisation_info(path_id, ticket):
     """
-    This function will return the path visualisation details for the APIC-EM path visualisation {id}
+    This function will return the path visualisation details for the APIC-EM path visualisation {path_id}
+    API call to /flow-analysis/{path_id}
     :param path_id: APIC-EM path visualisation id
     :param ticket: APIC-EM ticket
     :return: Path visualisation details in a list [device,interface_out,interface_in,device...]
