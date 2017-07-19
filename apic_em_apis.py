@@ -11,24 +11,24 @@
 import requests
 import json
 import utils
-import lxml
-import xml.dom.minidom
 
-from modules_init import EM_URL, EM_USER, EM_PASSW
+from modules_init import EM_URL
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)  # Disable insecure https warnings
 
 
-def get_service_ticket():
+def get_service_ticket(username, password):
     """
-    create the authorization ticket required to access APIC-EM
+    Create the authorization ticket required to access APIC-EM
     Call to APIC-EM - /ticket
+    :param username: the username
+    :param password: the password
     :return: ticket
     """
 
-    payload = {'username': EM_USER, 'password': EM_PASSW}
+    payload = {'username': username, 'password': password}
     url = EM_URL + '/ticket'
     header = {'content-type': 'application/json'}
     ticket_response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
@@ -39,9 +39,6 @@ def get_service_ticket():
         ticket = ticket_json['response']['serviceTicket']
         print('APIC-EM ticket: ', ticket)
         return ticket
-
-
-ticket = get_service_ticket()
 
 
 def find_client(client_ip, ticket):
@@ -55,7 +52,7 @@ def find_client(client_ip, ticket):
 
     interface_name = None
     hostname = None
-    vlan_Id = None
+    vlan_id = None
     url = EM_URL + '/host'
     header = {'accept': 'application/json', 'X-Auth-Token': ticket}
     payload = {'hostIp': client_ip}
@@ -67,10 +64,10 @@ def find_client(client_ip, ticket):
         host_info = host_json['response'][0]
         interface_name = host_info['connectedInterfaceName']
         device_id = host_info['connectedNetworkDeviceId']
-        vlan_Id = host_info['vlanId']
+        vlan_id = host_info['vlanId']
         hostname = get_hostname_id(device_id, ticket)[0]
         print('The IP address ', client_ip, ' is connected to the network device ', hostname, ',  interface ', interface_name)
-    return hostname, interface_name, vlan_Id
+    return hostname, interface_name, vlan_id
 
 
 def get_hostname_id(device_id, ticket):
@@ -85,12 +82,28 @@ def get_hostname_id(device_id, ticket):
     url = EM_URL + '/network-device/' + device_id
     header = {'accept': 'application/xml', 'X-Auth-Token': ticket}
     hostname_response = requests.get(url, headers=header, verify=False)
-    print(hostname_response)
-    #hostname_json = hostname_response.json()
-    #utils.pprint(hostname_json)
-    #hostname = hostname_json['response']['hostname']
-    #devicetype = hostname_json['response']['type']
-    #return hostname, devicetype
+    hostname_json = hostname_response.json()
+    hostname = hostname_json['response']['hostname']
+    devicetype = hostname_json['response']['type']
+    return hostname, devicetype
+
+
+def get_hostname_ip(device_ip, ticket):
+    """
+    The function will find out the hostname of the network device with the specified management IP address
+    API call to sandboxapic.cisco.com/api/v1/network-device/ip-address/{ip-address}
+    :param device_ip: IP address to check
+    :param ticket: APIC-EM ticket
+    :return: network device hostname and type
+    """
+
+    url = 'https://' + EM_URL + '/network-device/ip-address/' + device_ip
+    header = {'accept': 'application/json', 'X-Auth-Token': ticket}
+    hostname_response = requests.get(url, headers=header, verify=False)
+    hostname_json = hostname_response.json()
+    hostname = hostname_json['response']['hostname']
+    device_type = hostname_json['response']['type']
+    return hostname, device_type
 
 
 def get_device_id(device_name, ticket):
@@ -112,25 +125,21 @@ def get_device_id(device_name, ticket):
     return device_id
 
 
-def check_client_ip_address(client_ip):
+def check_client_ip_address(client_ip, ticket):
     """
     The function will find out if APIC-EM has a client device configured with the specified IP address.
     API call to /host
     It will print if a client device exists or not.
     :param client_ip: client IP address
+    :param ticket: APIC-EM ticket
     :return: None
     """
 
-    url = 'https://' + APIC_EM + '/host'
-    header = {'accept': 'application/json', 'X-Auth-Token': APIC_EM_TICKET}
+    url = 'https://' + EM_URL + '/host'
+    header = {'accept': 'application/json', 'X-Auth-Token': ticket}
     payload = {'hostIp': client_ip}
     host_response = requests.get(url, params=payload, headers=header, verify=False)
     host_json = host_response.json()
-
-    # pprint(host_json)  # needed for troubleshooting
-
-    # verification if client found or not
-
     if not host_json['response']:
         print('The IP address', client_ip, 'is not used by any client devices')
     else:
@@ -146,9 +155,10 @@ def check_client_ip_address(client_ip):
             # info for wireless clients
 
             apic_em_device_id = host_info['connectedNetworkDeviceId']
-            hostname = get_hostname_id(apic_em_device_id)[0]
-            device_type = get_hostname_id(apic_em_device_id)[1]
-            print('The IP address', client_ip, ', is connected to the network device:', hostname, ', model:', device_type, ', interface VLAN:', host_vlan)
+            hostname = get_hostname_id(apic_em_device_id, ticket)[0]
+            device_type = get_hostname_id(apic_em_device_id, ticket)[1]
+            print('\nThe IP address', client_ip, ', is connected to the network device:', hostname,
+                  ', model:', device_type, ', interface VLAN:', host_vlan)
             interface_name = host_vlan
         else:
 
@@ -156,30 +166,28 @@ def check_client_ip_address(client_ip):
 
             interface_name = host_info['connectedInterfaceName']
             apic_em_device_id = host_info['connectedNetworkDeviceId']
-            hostname = get_hostname_id(apic_em_device_id)[0]
-            device_type = get_hostname_id(apic_em_device_id)[1]
+            hostname = get_hostname_id(apic_em_device_id, ticket)[0]
+            device_type = get_hostname_id(apic_em_device_id, ticket)[1]
             print('The IP address', client_ip, ', is connected to the network device:', hostname, ', model:',
                   device_type, ', interface:', interface_name, ', VLAN:', host_vlan)
+    return hostname, interface_name, host_vlan
 
 
-def check_client_mac_address(client_mac):
+def check_client_mac_address(client_mac, ticket):
     """
     The function will find out if APIC-EM has a client device configured with the specified MAC address.
     API call to /host
     It will print if a client device exists or not.
     :param client_mac: client MAC address
+    :param ticket: APIC-EM ticket
     :return: None
     """
 
-    url = 'https://' + APIC_EM + '/host'
-    header = {'accept': 'application/json', 'X-Auth-Token': APIC_EM_TICKET}
+    url = 'https://' + EM_URL + '/host'
+    header = {'accept': 'application/json', 'X-Auth-Token': ticket}
     payload = {'hostMac': client_mac}
     host_response = requests.get(url, params=payload, headers=header, verify=False)
     host_json = host_response.json()
-
-    # pprint(host_json)  # needed for troubleshooting
-
-    # verification if client found or not
 
     if not host_json['response']:
         print('The MAC address', client_mac, 'is not used by any client devices')
@@ -203,8 +211,8 @@ def check_client_mac_address(client_mac):
                 # info for wireless clients
 
                 apic_em_device_id = host_info['connectedNetworkDeviceId']
-                hostname = get_hostname_id(apic_em_device_id)[0]
-                device_type = get_hostname_id(apic_em_device_id)[1]
+                hostname = get_hostname_id(apic_em_device_id, ticket)[0]
+                device_type = get_hostname_id(apic_em_device_id, ticket)[1]
                 print('The MAC address', client_mac, ', is connected to the network device:', hostname, ', model:',
                       device_type, ', interface VLAN:', host_vlan)
             else:
@@ -213,8 +221,8 @@ def check_client_mac_address(client_mac):
 
                 interface_name = host_info['connectedInterfaceName']
                 apic_em_device_id = host_info['connectedNetworkDeviceId']
-                hostname = get_hostname_id(apic_em_device_id)[0]
-                device_type = get_hostname_id(apic_em_device_id)[1]
+                hostname = get_hostname_id(apic_em_device_id, ticket)[0]
+                device_type = get_hostname_id(apic_em_device_id, ticket)[1]
                 print('The MAC address', client_mac, ', is connected to the network device:', hostname, ', model:',
                       device_type, ', interface:', interface_name, ', VLAN:', host_vlan)
             print('The client with the MAC address', client_mac, 'has the IP address:', host_ip)
@@ -222,7 +230,7 @@ def check_client_mac_address(client_mac):
             print('The MAC address', client_mac, 'is not in correct format')
 
 
-def get_interface_name(interface_ip):
+def get_interface_name(interface_ip, ticket):
     """
     The function will find out if APIC-EM has a network device with the specified IP address configured on an interface
     API call to /interface/ip-address/{ipAddress}, gets list of interfaces with the given IP address.
@@ -230,23 +238,24 @@ def get_interface_name(interface_ip):
     There is a nested function, get_hostname_ip , to find out the information about wireless
     AP's based on the management IP address
     :param interface_ip: IP address to check
+    :param ticket: APIC-EM ticket
     :return: network device hostname
     """
 
-    url = 'https://' + APIC_EM + '/interface/ip-address/' + interface_ip
-    header = {'accept': 'application/json', 'X-Auth-Token': APIC_EM_TICKET}
+    url = 'https://' + EM_URL + '/interface/ip-address/' + interface_ip
+    header = {'accept': 'application/json', 'X-Auth-Token': ticket}
     interface_info_response = requests.get(url, headers=header, verify=False)
     if not interface_info_response:
         device_ip = interface_ip
-        url = 'https://' + APIC_EM + '/network-device/ip-address/' + device_ip  # verification required by
+        url = 'https://' + EM_URL + '/network-device/ip-address/' + device_ip  # verification required by
         # wireless AP's IP address
-        header = {'accept': 'application/json', 'X-Auth-Token': APIC_EM_TICKET}
+        header = {'accept': 'application/json', 'X-Auth-Token': ticket}
         device_info_response = requests.get(url, headers=header, verify=False)
         if not device_info_response:
             print('The IP address ', interface_ip, ' is not configured on any network devices')
         else:
-            hostname = get_hostname_ip(device_ip)[0]
-            device_type = get_hostname_ip(device_ip)[1]
+            hostname = get_hostname_ip(device_ip, ticket)[0]
+            device_type = get_hostname_ip(device_ip, ticket)[1]
             print('The IP address ', device_ip, ' is configured on network device ', hostname, ',  ', device_type)
             return hostname
     else:
@@ -254,24 +263,25 @@ def get_interface_name(interface_ip):
         interface_info = interface_info_json['response'][0]
         interface_name = interface_info['portName']
         device_id = interface_info['deviceId']
-        hostname = get_hostname_id(device_id)[0]
-        device_type = get_hostname_id(device_id)[1]
+        hostname = get_hostname_id(device_id, ticket)[0]
+        device_type = get_hostname_id(device_id, ticket)[1]
         print('The IP address ', interface_ip, ' is configured on network device ', hostname, ',  ',
               device_type, ',  interface ', interface_name)
         return hostname
 
 
-def get_license_device(deviceid):
+def get_license_device(deviceid, ticket):
     """
     The function will find out the active licenses of the network device with the specified device ID
     API call to sandboxapic.cisco.com/api/v1//license-info/network-device/{id}
     :param deviceid: APIC-EM network device id
+    :param ticket: APIC-EM ticket
     :return: license information for the device, as a list with all licenses
     """
 
     license_info = []
-    url = 'https://' + APIC_EM + '/license-info/network-device/' + deviceid
-    header = {'accept': 'application/json', 'X-Auth-Token': APIC_EM_TICKET}
+    url = 'https://' + EM_URL + '/license-info/network-device/' + deviceid
+    header = {'accept': 'application/json', 'X-Auth-Token': ticket}
     payload = {'deviceid': deviceid}
     device_response = requests.get(url, params=payload, headers=header, verify=False)
     if device_response.status_code == 200:
@@ -364,7 +374,3 @@ def get_path_visualisation_info(path_id, ticket):
         path_list.append(path_info['request']['destIP'])
     return path_status, path_list
 
-
-hostn = get_hostname_id('6ce631db-9212-4587-867f-b8f3aed1702d',ticket)
-
-utils.pprint(hostn)
