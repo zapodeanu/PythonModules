@@ -16,6 +16,7 @@ from modules_init import EM_URL
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
+
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)  # Disable insecure https warnings
 
 
@@ -317,7 +318,7 @@ def sync_device(device_name, ticket):
     return sync_response.status_code
 
 
-def create_path_visualisation(src_ip, dest_ip, ticket):
+def create_path_trace(src_ip, dest_ip, ticket):
     """
     This function will create a new Path Visualisation between the source IP address {src_ip} and the
     destination IP address {dest_ip}
@@ -342,7 +343,7 @@ def create_path_visualisation(src_ip, dest_ip, ticket):
     return path_id
 
 
-def get_path_visualisation_info(path_id, ticket):
+def get_path_trace_info(path_id, ticket):
     """
     This function will return the path visualisation details for the APIC-EM path visualisation {path_id}
     API call to /flow-analysis/{path_id}
@@ -376,4 +377,20 @@ def get_path_visualisation_info(path_id, ticket):
                 pass
         path_list.append(path_info['request']['destIP'])
     return path_status, path_list
+
+
+def delete_path_trace(path_id, ticket):
+    """
+    This function will delete the path visualisation with the {path_id}
+    API call to /flow-analysis/{path_id}
+    :param path_id: APIC-EM path visualisation id
+    :param ticket: APIC-EM ticket
+    :return: Status code - 202 - deleted
+    """
+
+    url = EM_URL + '/flow-analysis/' + path_id
+    header = {'accept': 'application/json', 'content-type': 'application/json', 'X-Auth-Token': ticket}
+    path_response = requests.delete(url, headers=header, verify=False)
+    path_status_code = path_response.status_code
+    return path_status_code
 
