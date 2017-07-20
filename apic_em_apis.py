@@ -37,7 +37,6 @@ def get_service_ticket(username, password):
     else:
         ticket_json = ticket_response.json()
         ticket = ticket_json['response']['serviceTicket']
-        print('APIC-EM ticket: ', ticket)
         return ticket
 
 
@@ -97,7 +96,7 @@ def get_hostname_ip(device_ip, ticket):
     :return: network device hostname and type
     """
 
-    url = 'https://' + EM_URL + '/network-device/ip-address/' + device_ip
+    url = EM_URL + '/network-device/ip-address/' + device_ip
     header = {'accept': 'application/json', 'X-Auth-Token': ticket}
     hostname_response = requests.get(url, headers=header, verify=False)
     hostname_json = hostname_response.json()
@@ -136,7 +135,7 @@ def check_client_ip_address(client_ip, ticket):
     :return: None
     """
 
-    url = 'https://' + EM_URL + '/host'
+    url = EM_URL + '/host'
     header = {'accept': 'application/json', 'X-Auth-Token': ticket}
     payload = {'hostIp': client_ip}
     host_response = requests.get(url, params=payload, headers=header, verify=False)
@@ -184,7 +183,7 @@ def check_client_mac_address(client_mac, ticket):
     :return: None
     """
 
-    url = 'https://' + EM_URL + '/host'
+    url = EM_URL + '/host'
     header = {'accept': 'application/json', 'X-Auth-Token': ticket}
     payload = {'hostMac': client_mac}
     host_response = requests.get(url, params=payload, headers=header, verify=False)
@@ -243,7 +242,7 @@ def get_interface_name(interface_ip, ticket):
     :return: network device hostname
     """
 
-    url = 'https://' + EM_URL + '/interface/ip-address/' + interface_ip
+    url = EM_URL + '/interface/ip-address/' + interface_ip
     header = {'accept': 'application/json', 'X-Auth-Token': ticket}
     interface_info_response = requests.get(url, headers=header, verify=False)
     if not interface_info_response:
@@ -281,7 +280,7 @@ def get_license_device(deviceid, ticket):
     """
 
     license_info = []
-    url = 'https://' + EM_URL + '/license-info/network-device/' + deviceid
+    url = EM_URL + '/license-info/network-device/' + deviceid
     header = {'accept': 'application/json', 'X-Auth-Token': ticket}
     payload = {'deviceid': deviceid}
     device_response = requests.get(url, params=payload, headers=header, verify=False)
