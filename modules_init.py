@@ -13,8 +13,7 @@ SPARK_AUTH = 'Bearer ' + 'OTkyMTU2NGUtYjkzZi00OTQ3LTljOWQt...'
 
 # Meraki init info
 
-MERAKI_API_KEY = 'e9b019fcd2e49e61cb47...'  # 
-# MERAKI_API_KEY = '6d5ca08abf9bcb0393513841...'  # Meraki sandbox
+MERAKI_API_KEY = '6d5ca08abf9bcb0393513841...'  # Meraki sandbox
 MERAKI_CUSTOMER_NUMBER = '0348-....' 
 MERAKI_URL = 'https://dashboard.meraki.com/api/v0'
 
