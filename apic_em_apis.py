@@ -271,19 +271,19 @@ def get_interface_name(interface_ip, ticket):
         return hostname
 
 
-def get_license_device(deviceid, ticket):
+def get_license_device(device_id, ticket):
     """
     The function will find out the active licenses of the network device with the specified device ID
     API call to /license-info/network-device/{id}
-    :param deviceid: APIC-EM network device id
+    :param device_id: APIC-EM network device id
     :param ticket: APIC-EM ticket
     :return: license information for the device, as a list with all licenses
     """
 
     license_info = []
-    url = EM_URL + '/license-info/network-device/' + deviceid
+    url = EM_URL + '/license-info/network-device/' + device_id
     header = {'accept': 'application/json', 'X-Auth-Token': ticket}
-    payload = {'deviceid': deviceid}
+    payload = {'deviceid': device_id}
     device_response = requests.get(url, params=payload, headers=header, verify=False)
     if device_response.status_code == 200:
         device_json = device_response.json()

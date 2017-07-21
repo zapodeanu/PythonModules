@@ -1,4 +1,5 @@
 
+
 # developed by Gabi Zapodeanu, TSA, GPO, Cisco Systems
 
 
@@ -181,7 +182,7 @@ def post_room_message(room_name, message):
 def post_room_file(room_name, file_name, file_type, file_path):
     """
     This function will post the file with the name {file_name}, type of file {file_type}, 
-    from the local machine folder with the path {file_path}, to the Spark room with the name {room_name}
+    from the local folder with the path {file_path}, to the Spark room with the name {room_name}
     Call to function get_room_id(room_name) to find the room_id
     Followed by API call /messages
     :param room_name: Spark room name

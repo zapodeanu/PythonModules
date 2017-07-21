@@ -8,13 +8,12 @@
 # this module includes common utilized functions to create applications using Meraki APIs
 
 
-import requests
 import json
-import utils
+
+import requests
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 from modules_init import MERAKI_API_KEY, MERAKI_URL
-
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)  # Disable insecure https warnings
 
@@ -173,7 +172,7 @@ def get_all_mac_clients(org_name, netw_name, timespan):
     :return: list with all the client info
     """
 
-    meraki_sn_list = get_sn_network_devices(org_name,netw_name)
+    meraki_sn_list = get_sn_network_devices(org_name, netw_name)
     client_mac_list = []
     for sn in meraki_sn_list:
         clients = get_clients(sn, timespan)
@@ -186,7 +185,7 @@ def get_user_cell(users_info, email):
     """
     This function will look up the user cell phone based on his email
     :param users_info: List of all the users info
-    :param user_email: user email address
+    :param email: user email address
     :return: the user cell phone number
     """
 
@@ -257,7 +256,7 @@ def enable_ssid(org_name, netw_name, ssid_name):
     header = {'content-type': 'application/json', 'X-Cisco-Meraki-API-Key': MERAKI_API_KEY}
     enable_ssid_response = requests.put(url, data=json.dumps(payload), headers=header, verify=False)
     enable_ssid_json = enable_ssid_response.json()
-    if enable_ssid_json['enabled'] == True:
+    if enable_ssid_json['enabled']:
         ssid_status = 'Enabled'  # return Enabled status
     else:
         ssid_status = 'Disabled'  # return Disabled status
@@ -284,7 +283,7 @@ def disable_ssid(org_name, netw_name, ssid_name):
     header = {'content-type': 'application/json', 'X-Cisco-Meraki-API-Key': MERAKI_API_KEY}
     enable_ssid_response = requests.put(url, data=json.dumps(payload), headers=header, verify=False)
     enable_ssid_json = enable_ssid_response.json()
-    if enable_ssid_json['enabled'] == True:
+    if enable_ssid_json['enabled']:
         ssid_status = 'Enabled'  # return Enabled status
     else:
         ssid_status = 'Disabled'   # return Disabled status
