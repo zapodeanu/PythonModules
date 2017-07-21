@@ -8,14 +8,13 @@
 # Spark init info
 
 SPARK_URL = 'https://api.ciscospark.com/v1'
-SPARK_AUTH = 'Bearer ' + 'OTkyMTU2NGUtYjkzZi00OTQ3LTljOWQtNmZmYTNiMjg2Yzg0ZjEyM2NmYTYtMmZi'
+SPARK_AUTH = 'Bearer ' + 'OTkyMTU2NGUtYjkzZi00OTQ3LTljOWQt...'
 
 
 # Meraki init info
 
-MERAKI_API_KEY = 'e9b019fcd2e49e61cb47edeadccb19cbffe8bf3c'  # gabriel.zapodeanu@gmail.com
-# MERAKI_API_KEY = '6d5ca08abf9bcb0393513841950a3889aefd6577'  # Meraki sandbox
-MERAKI_CUSTOMER_NUMBER = '0348-6604'  # gabriel.zapodeanu@gmail.com
+MERAKI_API_KEY = '6d5ca08abf9bcb0393513841...'  # Meraki sandbox
+MERAKI_CUSTOMER_NUMBER = '0348-....' 
 MERAKI_URL = 'https://dashboard.meraki.com/api/v0'
 
 
