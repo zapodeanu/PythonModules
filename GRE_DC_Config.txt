@@ -1,0 +1,35 @@
+!
+ip vrf SECURE_REMOTE
+ rd 201:1
+ route-target export 201:1
+ route-target import 201:1
+!
+interface Loopback200
+ ip address 172.16.200.1 255.255.255.255
+!
+interface Tunnel201
+ ip vrf forwarding SECURE_REMOTE
+ ip address 172.16.201.1 255.255.255.0
+ tunnel source Loopback200
+ tunnel destination 172.16.200.2
+!
+interface GigabitEthernet3
+ description to_SECURE_REMOTE
+ ip vrf forwarding SECURE_REMOTE
+ ip address 172.16.202.1 255.255.255.0
+ negotiation auto
+!
+router eigrp 123
+ network 172.16.200.1 0.0.0.0
+ redistribute static
+ redistribute connected
+!         
+!         
+router eigrp 201
+ !        
+ address-family ipv4 vrf SECURE_REMOTE 
+  network 172.16.201.1 0.0.0.0
+  network 172.16.202.1 0.0.0.0
+  autonomous-system 201
+ exit-address-family
+
