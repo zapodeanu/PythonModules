@@ -10,6 +10,7 @@ import meraki_apis
 import utils
 import logging
 import sys
+import pi_apis
 
 import json
 import select
@@ -38,7 +39,7 @@ MERAKI_ORG_NAME = 'GZ'
 MERAKI_NETWORK = 'APIsDemo'
 MERAKI_SSID = 'Guest'
 
-UTILVAR = [{'fg': '24'},{'25':'ab','356':'df'}]
+UTILVAR = [{'fg': '24'}, {'25': 'ab', '356': 'df'}]
 
 
 def main():
@@ -57,6 +58,42 @@ def main():
 
     input('\nTo continue press any key  ')
     spark_apis.delete_team(SPARK_TEAM_NAME)
+
+    # Testing PI APIs
+
+    print('\n\n\nTESTING PI APIs\n')
+
+    #  deploy DC router CLI template
+
+    dc_device_hostname = 'PDX-RO'
+    pi_dc_device_id = pi_apis.pi_get_device_id(dc_device_hostname)
+    print('Head end router: ', dc_device_hostname, ', PI Device id: ', pi_dc_device_id)
+
+    # this is the CLI text config file
+    dc_file_name = 'GRE_DC_Config.txt'
+    print('DC CLI text file name is: ', dc_file_name)
+
+    dc_cli_template_name = dc_file_name.split('.')[0]
+    print('DC CLI template name is: ', dc_cli_template_name)
+
+    variables_list = None
+
+    # upload the new CLI config file to PI
+    dc_cli_template_id = pi_apis.pi_upload_cli_template(dc_file_name, dc_cli_template_name, variables_list)
+    print('The DC CLI template id is: ', dc_cli_template_id)
+
+    # deploy the new uploaded PI CLI template to the DC router
+
+    variables_value = None
+    pi_dc_job_name = pi_apis.pi_deploy_cli_template(pi_dc_device_id, dc_cli_template_name, variables_value)
+    print('The PI DC Job CLI template deployment is: ', pi_dc_job_name)
+
+    # check for job status
+
+    print('Wait for PI to complete template deployments')
+    time.sleep(45)  # time delay to allow PI de deploy the jobs
+    dc_job_status = pi_apis.pi_get_job_status(pi_dc_job_name)
+    print('DC CLI template deployment status: ', dc_job_status)
 
 
 if __name__ == '__main__':
