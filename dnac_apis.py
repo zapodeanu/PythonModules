@@ -20,9 +20,6 @@ DNAC_URL = 'https://172.28.97.216'
 DNAC_USER = 'admin'
 DNAC_PASS = 'Cisco123'
 
-DNAC_URL = 'https://10.93.140.80'
-DNAC_USER = 'admin'
-DNAC_PASS = 'C1sco1234'
 
 DNAC_AUTH = HTTPBasicAuth(DNAC_USER, DNAC_PASS)
 
@@ -150,9 +147,9 @@ def deploy_template(template_name, device_name, dnac_jwt_token):
     :return:
     """
     device_id = get_device_id_name(device_name, dnac_jwt_token)
-    print(device_id)
     template_id = get_template_id(template_name, dnac_jwt_token)
     print(template_id)
+    print(device_id)
     payload = {
             "name": template_name,
             "templateId": template_id,
