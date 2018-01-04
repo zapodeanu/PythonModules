@@ -154,10 +154,11 @@ def deploy_template(template_name, device_name, dnac_jwt_token):
     template_id = get_template_id(template_name, dnac_jwt_token)
     print(template_id)
     payload = {
-            "name": "DCRConfig",
+            "name": template_name,
+            "templateId": template_id,
             "templateParams": [
                 {
-                "deviceId": "93c4b80d-baf2-4d6c-93c7-786d162e6d9b"
+                "deviceId": str(template_id)
                 }
             ]
         }
@@ -166,7 +167,7 @@ def deploy_template(template_name, device_name, dnac_jwt_token):
     print(url)
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     response = requests.post(url, headers=header, data=json.dumps(payload), verify=False)
-    print(response)
+    print(response.text)
     print(response.status_code)
 
 
@@ -298,9 +299,6 @@ def create_floor(site_name, floor_name, floor_number, ticket):
     requests.post(url, data=json.dumps(payload), headers=header, verify=False)
 
 
-
-
-
 def assign_device_site(device_sn, site_name, ticket):
     """
     This function will assign a device with the specified SN to a site with the name {site_name}
@@ -358,7 +356,9 @@ dnac_token = get_dnac_jwt_token(DNAC_AUTH)
 print(dnac_token)
 
 print('templ-id', get_template_id('DCRConfig', dnac_token))
+
+
 print('device-id', get_device_id_name('NYC-9300', dnac_token))
-print('device id sn', get_device_id_sn('FOC1802X0SC', dnac_token))
+
 deploy_template('DCRConfig', 'NYC-9300', dnac_token)
 
