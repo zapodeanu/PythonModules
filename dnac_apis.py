@@ -5,6 +5,7 @@
 
 import requests
 import json
+import time
 
 import requests.packages.urllib3
 
@@ -410,18 +411,134 @@ def get_geo_info(address, google_key):
     return location_info
 
 
+def sync_device(device_name, dnac_jwt_token):
+    """
+    This function will sync the device configuration from the device with the name {device_name}
+    :param device_name: device hostname
+    :param dnac_jwt_token: DNA C token
+    :return: the response status code, 202 if sync initiated, and the task id
+    """
+    device_id = get_device_id_name(device_name, dnac_jwt_token)
+    param = [device_id]
+    url = DNAC_URL + '/api/v1/network-device/sync?forceSync=true'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    sync_response = requests.put(url, data=json.dumps(param), headers=header, verify=False)
+    task = sync_response.json()['response']['taskId']
+    return sync_response.status_code, task
+
+
+def check_task_id_status(task_id, dnac_jwt_token):
+    """
+    This function will check the status of the task with the id {task_id}
+    :param task_id: task id
+    :param dnac_jwt_token: DNA C token
+    :return: status - {completed} = successful, {error} = unsuccessful
+    """
+    url = DNAC_URL + '/api/v1/task/' + task_id
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    task_response = requests.get(url, headers=header, verify=False)
+    task_json = task_response.json()
+    pprint(task_json)
+    task_status = task_json['response']['isError']
+    if task_status == False:
+        task_result = 'completed'
+    else:
+        task_result = 'error'
+    return task_result
+
+
+def create_path_visualisation(src_ip, dest_ip, dnac_jwt_token):
+    """
+    This function will create a new Path Visualisation between the source IP address {src_ip} and the
+    destination IP address {dest_ip}
+    :param src_ip: Source IP address
+    :param dest_ip: Destination IP address
+    :param dnac_jwt_token: DNA C token
+    :return: DNA C path visualisation id
+    """
+
+    param = {
+        'destIP': dest_ip,
+        'periodicRefresh': False,
+        'sourceIP': src_ip
+    }
+
+    url = DNAC_URL + '/api/v1/flow-analysis'
+    header = {'accept': 'application/json', 'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    path_response = requests.post(url, data=json.dumps(param), headers=header, verify=False)
+    path_json = path_response.json()
+    print(path_response.status_code)
+    print(path_response.text)
+    path_id = path_json['response']['flowAnalysisId']
+    return path_id
+
+
+def get_path_visualisation_info(path_id, dnac_jwt_token):
+    """
+    This function will return the path visualisation details for the APIC-EM path visualisation {id}
+    :param path_id: DNA C path visualisation id
+    :param dnac_jwt_token: DNA C token
+    :return: Path visualisation details in a list [device,interface_out,interface_in,device...]
+    """
+
+    url = DNAC_URL + '/api/v1/flow-analysis/' + path_id
+    header = {'accept': 'application/json', 'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    path_response = requests.get(url, headers=header, verify=False)
+    path_json = path_response.json()
+    print(path_response.status_code)
+    pprint(path_json)
+    path_info = path_json['response']
+    path_status = path_info['request']['status']
+    path_list = []
+    if path_status == 'COMPLETED':
+        network_info = path_info['networkElementsInfo']
+        path_list.append(path_info['request']['sourceIP'])
+        for elem in network_info:
+            try:
+                path_list.append(elem['ingressInterface']['physicalInterface']['name'])
+            except:
+                pass
+            try:
+                path_list.append(elem['name'])
+            except:
+                pass
+            try:
+                path_list.append(elem['egressInterface']['physicalInterface']['name'])
+            except:
+                pass
+        path_list.append(path_info['request']['destIP'])
+    return path_status, path_list
+
+
+
 dnac_token = get_dnac_jwt_token(DNAC_AUTH)
-print(dnac_token)
+print('DNA C Token: ', dnac_token)
 
 # deploy_template('DCRConfig', 'NYC-9300', dnac_token) # to test template deployments
 
-create_site('USA', dnac_token)
-print('site id', get_site_id('USA', dnac_token))
-create_building('USA', 'Sherwood', '23742 SW Pinehurst Dr., Sherwood, OR 97140', dnac_token)
-print(get_building_id('Sherwood',dnac_token))
+# create_site('USA', dnac_token)
+# print('site id', get_site_id('USA', dnac_token))
+# create_building('USA', 'Sherwood', '23742 SW Pinehurst Dr., Sherwood, OR 97140', dnac_token)
+# print(get_building_id('Sherwood',dnac_token))
 
-create_floor('Sherwood', 'Floor 1', '1', dnac_token)
-print(get_floor_id('Sherwood', 'Floor 1', dnac_token  ))
+# create_floor('Sherwood', 'Floor 1', '1', dnac_token)
+# print(get_floor_id('Sherwood', 'Floor 1', dnac_token  ))
 
-assign_device_sn_building('FCW2123L0N3', 'Manhattan', dnac_token)
-assign_device_name_building('PDX-RO', 'Lake Oswego', dnac_token)
+# assign_device_sn_building('FCW2123L0N3', 'Manhattan', dnac_token)
+# assign_device_name_building('PDX-RO', 'Lake Oswego', dnac_token)
+
+# sync_return = []
+# sync_return = sync_device('PDX-RO', dnac_token)
+# task_id = sync_return[1]
+# print('task id ', task_id)
+# print('status code ', sync_return[0])
+
+# time.sleep(3)
+
+# print(check_task_id_status(task_id, dnac_token))
+
+path_trace_id = (create_path_visualisation('10.93.130.21', '10.93.140.35', dnac_token))
+print(path_trace_id)
+time.sleep(30)
+
+get_path_visualisation_info(path_trace_id, dnac_token)
