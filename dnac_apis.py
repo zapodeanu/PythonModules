@@ -5,7 +5,6 @@
 
 import requests
 import json
-import time
 
 import requests.packages.urllib3
 
@@ -13,7 +12,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 from requests.auth import HTTPBasicAuth  # for Basic Auth
 
-from modules_init import GOOGLE_API_KEY
+# from modules_init import GOOGLE_API_KEY
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)  # Disable insecure https warnings
 
