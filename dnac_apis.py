@@ -12,6 +12,8 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 from requests.auth import HTTPBasicAuth  # for Basic Auth
 
+from modules_init import GOOGLE_API_KEY
+
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)  # Disable insecure https warnings
 
 # use the DNA Center controller
@@ -20,6 +22,9 @@ DNAC_URL = 'https://172.28.97.216'
 DNAC_USER = 'admin'
 DNAC_PASS = 'Cisco123'
 
+# DNAC_URL = 'https://10.93.140.80'
+# DNAC_USER = 'admin'
+# DNAC_PASS = 'C1sco1234'
 
 DNAC_AUTH = HTTPBasicAuth(DNAC_USER, DNAC_PASS)
 
@@ -90,6 +95,37 @@ def get_template_id(template_name, dnac_jwt_token):
     return template_id
 
 
+def deploy_template(template_name, device_name, dnac_jwt_token):
+    """
+    This function will deploy the template with the name {template_name} to the network device with the name
+    {device_name}
+    :param template_name: template name
+    :param device_name: device hostname
+    :param dnac_jwt_token: DNA C token
+    :return:
+    """
+    device_id = get_device_id_name(device_name, dnac_jwt_token)
+    template_id = get_template_id(template_name, dnac_jwt_token)
+    print(template_id)
+    print(device_id)
+    payload = {
+            "name": template_name,
+            "templateId": template_id,
+            "templateParams": [
+                {
+                "deviceId": str(template_id)
+                }
+            ]
+        }
+    pprint(payload)
+    url = DNAC_URL + '/api/v1/template-programmer/template/deploy'
+    print(url)
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.post(url, headers=header, data=json.dumps(payload), verify=False)
+    print(response.text)
+    print(response.status_code)
+
+
 def locate_client_ip(client_ip, dnac_jwt_token):
     """
     Locate a wired client device in the infrastructure by using the client IP address
@@ -138,41 +174,11 @@ def get_device_id_sn(device_sn, dnac_jwt_token):
     return device_id
 
 
-def deploy_template(template_name, device_name, dnac_jwt_token):
+def create_site(site_name, dnac_jwt_token):
     """
-
-    :param template_name:
-    :param device_name:
-    :param dnac_jwt_token:
-    :return:
-    """
-    device_id = get_device_id_name(device_name, dnac_jwt_token)
-    template_id = get_template_id(template_name, dnac_jwt_token)
-    print(template_id)
-    print(device_id)
-    payload = {
-            "name": template_name,
-            "templateId": template_id,
-            "templateParams": [
-                {
-                "deviceId": str(template_id)
-                }
-            ]
-        }
-    pprint(payload)
-    url = DNAC_URL + '/api/v1/template-programmer/template/deploy'
-    print(url)
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
-    response = requests.post(url, headers=header, data=json.dumps(payload), verify=False)
-    print(response.text)
-    print(response.status_code)
-
-
-def create_area(area_name, ticket):
-    """
-    The function will create a new area with the name {area_name}
-    :param area_name: DNA C area name
-    :param ticket: DNA C ticket
+    The function will create a new site with the name {site_name}
+    :param site_name: DNA C site name
+    :param dnac_jwt_token: DNA C token
     :return: none
     """
     payload = {
@@ -184,35 +190,51 @@ def create_area(area_name, ticket):
                 }
             }
         ],
-        "groupNameHierarchy": "Global/USA/" + area_name,
+        "groupNameHierarchy": "Global/" + site_name,
         "groupTypeList": [
             "SITE"
         ],
         "systemGroup": False,
         "parentId": "",
-        "name": area_name,
+        "name": site_name,
         "id": ""
     }
-    url = DNAC_URL + '/group'
-    header = {'content-type': 'application/json', 'X-Auth-Token': ticket}
+    url = DNAC_URL + '/api/v1/group'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     requests.post(url, data=json.dumps(payload), headers=header, verify=False)
 
 
-def create_site(site_name, area_name, address, ticket):
+def get_site_id(site_name, dnac_jwt_token):
     """
-    The function will create a new site with the name {site_name}, part of the area with the name {area_name}
+    The function will get the DNA C site id for the site with the name {site_name}
     :param site_name: DNA C site name
-    :param area_name: DNA C area name
-    :param address: site address
-    :param ticket: DNA C ticket
+    :param dnac_jwt_token: DNA C token
+    :return: DNA C site id
+    """
+    url = DNAC_URL + '/api/v1/group?groupType=SITE'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    site_response = requests.get(url, headers=header, verify=False)
+    site_json = site_response.json()
+    site_list = site_json['response']
+    for site in site_list:
+        if site_name == site['name']:
+            site_id = site['id']
+    return site_id
+
+
+def create_building(site_name, building_name, address, dnac_jwt_token):
+    """
+    The function will create a new building with the name {building_name}, part of the site with the name {site_name}
+    :param site_name: DNA C site name
+    :param building_name: DNA C building name
+    :param address: building address
+    :param dnac_jwt_token: DNA C token
     :return: none
     """
-    # get the area id for the area name
-
-    area_id = get_area_id(area_name, ticket)
+    # get the site id for the site name
+    site_id = get_site_id(site_name, dnac_jwt_token)
 
     # get the geolocation info for address
-
     geo_info = get_geo_info(address, GOOGLE_API_KEY)
     print('\nGeolocation info for the address ', address, ' is:')
     pprint(geo_info)
@@ -230,31 +252,49 @@ def create_site(site_name, area_name, address, ticket):
                 }
             }
         ],
-        "groupNameHierarchy": "Global/USA/" + site_name,
+        "groupNameHierarchy": "Global/" + site_name + '/' + building_name,
         "groupTypeList": [
             "SITE"
         ],
         "systemGroup": False,
-        "parentId": area_id,
-        "name": site_name,
+        "parentId": site_id,
+        "name": building_name,
         "id": ""
     }
-    url = DNAC_URL + '/group'
-    header = {'content-type': 'application/json', 'X-Auth-Token': ticket}
+    url = DNAC_URL + '/api/v1/group'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     requests.post(url, data=json.dumps(payload), headers=header, verify=False)
 
 
-def create_floor(site_name, floor_name, floor_number, ticket):
+def get_building_id(building_name, dnac_jwt_token):
+    """
+    The function will get the DNA C building id for the building with the name {building_name}
+    :param building_name: building name
+    :param dnac_jwt_token: DNA C token
+    :return: DNA C building id
+    """
+    url = DNAC_URL + '/api/v1/group?groupType=SITE'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    building_response = requests.get(url, headers=header, verify=False)
+    building_json = building_response.json()
+    building_list = building_json['response']
+    for building in building_list:
+        if building_name == building['name']:
+            building_id = building['id']
+    return building_id
+
+
+def create_floor(building_name, floor_name, floor_number, dnac_jwt_token):
     """
     The function will  create a floor in the building with the name {site_name}
-    :param site_name: DNA C site name
+    :param building_name: DNA C site name
     :param floor_name: floor name
     :param floor_number: floor number
-    :param ticket: DNA C ticket
+    :param dnac_jwt_token: DNA C token
     :return: none
     """
     # get the site id
-    site_id = get_site_id(site_name, ticket)
+    building_id = get_building_id(building_name, dnac_jwt_token)
 
     payload = {
         "additionalInfo": [
@@ -269,7 +309,7 @@ def create_floor(site_name, floor_name, floor_number, ticket):
                 "attributes": {
                     "offsetX": "0.0",
                     "offsetY": "0.0",
-                    "width": "300.0",
+                    "width": "200.0",
                     "length": "100.0",
                     "geometryType": "DUMMYTYPE",
                     "height": "20.0"
@@ -282,80 +322,106 @@ def create_floor(site_name, floor_name, floor_number, ticket):
                 }
             }
         ],
-        "groupNameHierarchy": "Global/USA/Lake Oswego/" + floor_name,
+        "groupNameHierarchy": "",
         "groupTypeList": [
             "SITE"
         ],
         "name": floor_name,
-        "parentId": site_id,
+        "parentId": building_id,
         "systemGroup": False,
         "id": ""
     }
-    url = DNAC_URL + '/group'
-    header = {'content-type': 'application/json', 'X-Auth-Token': ticket}
+    url = DNAC_URL + '/api/v1/group'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     requests.post(url, data=json.dumps(payload), headers=header, verify=False)
 
 
-def assign_device_site(device_sn, site_name, ticket):
+def get_floor_id(building_name, floor_name, dnac_jwt_token):
     """
-    This function will assign a device with the specified SN to a site with the name {site_name}
+    This function will return the floor id for the floor with the name {floor_name} located in the building with the
+    name {building_name}
+    :param building_name: building name
+    :param floor_name: floor name
+    :param dnac_jwt_token: DNA C token
+    :return: floor_id
+    """
+    building_id = get_building_id(building_name, dnac_jwt_token)
+    url = DNAC_URL + '/api/v1/group' + building_id + '/child?level=1'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    building_response = requests.get(url, headers=header, verify=False)
+    building_json = building_response.json()
+    floor_list = building_json['response']
+    for floor in floor_list:
+        if floor['name'] == floor_name:
+            floor_id = floor['id']
+    return floor_id
+
+
+def assign_device_sn_building(device_sn, building_name, dnac_jwt_token):
+    """
+    This function will assign a device with the specified SN to a building with the name {building_name}
     :param device_sn: network device SN
-    :param site_name: DNA C site name
-    :param ticket: DNA C ticket
+    :param building_name: DNA C building name
+    :param dnac_jwt_token: DNA C token
     :return:
     """
-    site_id = get_site_id(site_name, ticket)
-    device_id = get_device_id(device_sn, ticket)
-    url = DNAC_URL + '/group/' + site_id + '/member'
+    # get the building and device id's
+    building_id = get_building_id(building_name, dnac_jwt_token)
+    device_id = get_device_id_sn(device_sn, dnac_jwt_token)
+
+    url = DNAC_URL + '/api/v1/group/' + building_id + '/member'
     payload = {"networkdevice": [device_id]}
-    header = {'content-type': 'application/json', 'X-Auth-Token': ticket}
-    requests.post(url, data=json.dumps(payload), headers=header, verify=False)
-    print('\nDevice with the SN: ', device_sn, 'assigned to site: ', site_name)
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
+    print('\nDevice with the SN: ', device_sn, 'assigned to building: ', building_name)
 
 
-def get_area_id(area_name, ticket):
+def assign_device_name_building(device_name, building_name, dnac_jwt_token):
     """
-    The function will return the DNA C area id for the area with the name {area_name}
-    :param area_name: DNA C area name
-    :param ticket: DNA C ticket
-    :return: DNA C area id
+    This function will assign a device with the specified name to a building with the name {building_name}
+    :param device_name: network device name
+    :param building_name: DNA C building name
+    :param dnac_jwt_token: DNA C token
+    :return:
     """
-    url = DNAC_URL + '/group?groupType=SITE'
-    header = {'content-type': 'application/json', 'X-Auth-Token': ticket}
-    area_response = requests.get(url, headers=header, verify=False)
-    area_json = area_response.json()
-    area_list = area_json['response']
-    for area in area_list:
-        if area_name == area['name']:
-            area_id = area['id']
-    return area_id
+    # get the building and device id's
+    building_id = get_building_id(building_name, dnac_jwt_token)
+    device_id = get_device_id_name(device_name, dnac_jwt_token)
+
+    url = DNAC_URL + '/api/v1/group/' + building_id + '/member'
+    payload = {"networkdevice": [device_id]}
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
+    print('\nDevice with the name: ', device_name, 'assigned to building: ', building_name)
 
 
-def get_site_id(site_name, ticket):
+def get_geo_info(address, google_key):
     """
-    The function will get the DNA C site id for the site with the name {site_name}
-    :param site_name: DNA C site name
-    :param ticket: DNA C ticket
-    :return: DNA C site id
+    The function will access Google Geolocation API to find the longitude/latitude for a address
+    :param address: address, including ZIP and Country
+    :param google_key: Google API Key
+    :return: longitude/latitude
     """
-    url = DNAC_URL + '/group?groupType=SITE'
-    header = {'content-type': 'application/json', 'X-Auth-Token': ticket}
-    site_response = requests.get(url, headers=header, verify=False)
-    site_json = site_response.json()
-    site_list = site_json['response']
-    for site in site_list:
-        if site_name == site['name']:
-            site_id = site['id']
-    return site_id
+    url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + address + '&key=' + google_key
+    header = {'content-type': 'application/json'}
+    response = requests.get(url, headers=header, verify=False)
+    response_json = response.json()
+    location_info = response_json['results'][0]['geometry']['location']
+    return location_info
 
 
 dnac_token = get_dnac_jwt_token(DNAC_AUTH)
 print(dnac_token)
 
-print('templ-id', get_template_id('DCRConfig', dnac_token))
+# deploy_template('DCRConfig', 'NYC-9300', dnac_token) # to test template deployments
 
+create_site('USA', dnac_token)
+print('site id', get_site_id('USA', dnac_token))
+create_building('USA', 'Sherwood', '23742 SW Pinehurst Dr., Sherwood, OR 97140', dnac_token)
+print(get_building_id('Sherwood',dnac_token))
 
-print('device-id', get_device_id_name('NYC-9300', dnac_token))
+create_floor('Sherwood', 'Floor 1', '1', dnac_token)
+print(get_floor_id('Sherwood', 'Floor 1', dnac_token  ))
 
-deploy_template('DCRConfig', 'NYC-9300', dnac_token)
-
+assign_device_sn_building('FCW2123L0N3', 'Manhattan', dnac_token)
+assign_device_name_building('PDX-RO', 'Lake Oswego', dnac_token)
