@@ -110,14 +110,17 @@ def deploy_template(template_name, device_name, dnac_jwt_token):
     print(template_id)
     print(device_id)
     payload = {
-            "name": template_name,
             "templateId": template_id,
-            "templateParams": [
+            "targetInfo": [
                 {
-                "deviceId": str(template_id)
+                    "hostName": "NYC-9300",
+                    "type": None,
+                    "id": device_id,
+                    "params": None
                 }
             ]
         }
+
     pprint(payload)
     url = DNAC_URL + '/api/v1/template-programmer/template/deploy'
     print(url)
@@ -514,7 +517,7 @@ def get_path_visualisation_info(path_id, dnac_jwt_token):
 dnac_token = get_dnac_jwt_token(DNAC_AUTH)
 print('DNA C Token: ', dnac_token)
 
-# deploy_template('DCRConfig', 'NYC-9300', dnac_token) # to test template deployments
+deploy_template('DCRConfig', 'NYC-9300', dnac_token) # to test template deployments
 
 # create_site('USA', dnac_token)
 # print('site id', get_site_id('USA', dnac_token))
@@ -537,8 +540,8 @@ print('DNA C Token: ', dnac_token)
 
 # print(check_task_id_status(task_id, dnac_token))
 
-path_trace_id = (create_path_visualisation('10.93.130.21', '10.93.140.35', dnac_token))
-print(path_trace_id)
-time.sleep(30)
+# path_trace_id = (create_path_visualisation('10.93.130.21', '10.93.140.35', dnac_token))
+# print(path_trace_id)
+# time.sleep(30)
 
-get_path_visualisation_info(path_trace_id, dnac_token)
+# get_path_visualisation_info(path_trace_id, dnac_token)
