@@ -5,6 +5,7 @@
 
 import requests
 import json
+import time
 
 import requests.packages.urllib3
 
@@ -87,11 +88,17 @@ def get_template_id(template_name, dnac_jwt_token):
     :param dnac_jwt_token: DNA C token
     :return: DNA C template id
     """
-    template_id = None
     template_list = get_template_info(dnac_token)
+    template_id = 'template'
     for template in template_list:
         if template['name'] == template_name:
-            template_id = template['versionsInfo'][-1]['id']  # to get the last template version
+            template_version_list = template['versionsInfo']
+            pprint(template_version_list)
+            # to get the last template version, the template list is not ordered
+            version_list_len = len(template_version_list)
+            for version in template_version_list:
+                if version['version'] == str(version_list_len):
+                    template_id = version['id']
     return template_id
 
 
@@ -102,31 +109,45 @@ def deploy_template(template_name, device_name, dnac_jwt_token):
     :param template_name: template name
     :param device_name: device hostname
     :param dnac_jwt_token: DNA C token
-    :return:
+    :return: deployment status ({202} if successful), and the deployment task id
     """
-    device_id = get_device_id_name(device_name, dnac_jwt_token)
+    device_management_ip = get_device_management_ip_name(device_name, dnac_jwt_token)
     template_id = get_template_id(template_name, dnac_jwt_token)
     print(template_id)
-    print(device_id)
     payload = {
             "templateId": template_id,
             "targetInfo": [
                 {
-                    "hostName": "NYC-9300",
-                    "type": None,
-                    "id": device_id,
-                    "params": None
+                    "id": device_management_ip,
+                    "type": "MANAGED_DEVICE_IP",
+                    "params": {}
                 }
             ]
         }
-
     pprint(payload)
     url = DNAC_URL + '/api/v1/template-programmer/template/deploy'
-    print(url)
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     response = requests.post(url, headers=header, data=json.dumps(payload), verify=False)
     print(response.text)
-    print(response.status_code)
+    depl_status = response.status_code
+    depl_task_id = (response.json())["deploymentId"]
+    return depl_status, depl_task_id
+
+
+def check_template_deployment_status(depl_task_id, dnac_jwt_token):
+    """
+    This function will check the result for the deployment of the CLI template with the id {depl_task_id}
+    :param depl_task_id: template deployment id
+    :param dnac_jwt_token: DNA C token
+    :return: status - {SUCCESS} = successful, {FAILURE} = unsuccessful
+    """
+    url = DNAC_URL + '/api/v1/template-programmer/template/deploy/status/' + deployment_task_id
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    response_json = response.json()
+    pprint(response_json)
+    deployment_status = response_json["status"]
+    return deployment_status
 
 
 def locate_client_ip(client_ip, dnac_jwt_token):
@@ -149,9 +170,9 @@ def locate_client_ip(client_ip, dnac_jwt_token):
 
 def get_device_id_name(device_name, dnac_jwt_token):
     """
-
-    :param devive_name:
-    :param dnac_jwt_token:
+    This function will find the DNA C device id for the device with the name {device_name}
+    :param device_name: device hostname
+    :param dnac_jwt_token: DNA C token
     :return:
     """
     device_info = get_all_device_info(dnac_jwt_token)
@@ -160,6 +181,21 @@ def get_device_id_name(device_name, dnac_jwt_token):
         if device['hostname'] == device_name:
             device_id = device['id']
     return device_id
+
+
+def get_device_management_ip_name(device_name, dnac_jwt_token):
+    """
+    This function will find out the management IP address for the device with the name {device_name}
+    :param device_name: device name
+    :param dnac_jwt_token: DNA C token
+    :return: the management ip address
+    """
+    device_info = get_all_device_info(dnac_jwt_token)
+    device_list = device_info['response']
+    for device in device_list:
+        if device['hostname'] == device_name:
+            device_ip = device['managementIpAddress']
+    return device_ip
 
 
 def get_device_id_sn(device_sn, dnac_jwt_token):
@@ -434,18 +470,17 @@ def check_task_id_status(task_id, dnac_jwt_token):
     This function will check the status of the task with the id {task_id}
     :param task_id: task id
     :param dnac_jwt_token: DNA C token
-    :return: status - {completed} = successful, {error} = unsuccessful
+    :return: status - {SUCCESS} = successful, {FAILURE} = unsuccessful
     """
     url = DNAC_URL + '/api/v1/task/' + task_id
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     task_response = requests.get(url, headers=header, verify=False)
     task_json = task_response.json()
-    pprint(task_json)
     task_status = task_json['response']['isError']
     if task_status == False:
-        task_result = 'completed'
+        task_result = 'SUCCESS'
     else:
-        task_result = 'error'
+        task_result = 'FAILURE'
     return task_result
 
 
@@ -516,7 +551,13 @@ def get_path_visualisation_info(path_id, dnac_jwt_token):
 dnac_token = get_dnac_jwt_token(DNAC_AUTH)
 print('DNA C Token: ', dnac_token)
 
-deploy_template('DCRConfig', 'NYC-9300', dnac_token) # to test template deployments
+deployment = deploy_template('GRERemoteConfig', 'NYC-9300', dnac_token) # to test template deployments
+
+deployment_task_id = deployment[1]
+
+time.sleep(5)
+
+# check_template_deployment_status(deployment_task_id, dnac_token))
 
 # create_site('USA', dnac_token)
 # print('site id', get_site_id('USA', dnac_token))
