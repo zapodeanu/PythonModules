@@ -68,52 +68,177 @@ def get_all_device_info(dnac_jwt_token):
     return all_device_info
 
 
-def get_template_info(dnac_jwt_token):
+def get_project_id(project_name, dnac_jwt_token):
     """
-    This function will return the info for all CLI templates existing on DNA C
+    This function will retrieve the CLI templates project id for the project with the name {project_name}
+    :param project_name: CLI project template
+    :param dnac_jwt_token: DNA token
+    :return: project id
+    """
+    url = DNAC_URL + '/api/v1/template-programmer/project?name=' + project_name
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    proj_json = response.json()
+    proj_id = proj_json[0]['id']
+    return proj_id
+
+
+def get_project_info(project_name, dnac_jwt_token):
+    """
+    This function will retrieve all templates associated with the project with the name {project_name}
+    :param project_name: project name
+    :param dnac_jwt_token: DNA C token
+    :return: list of all templates, including names and ids
+    """
+    url = DNAC_URL + '/api/v1/template-programmer/project?name=' + project_name
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    project_json = response.json()
+    template_list = project_json[0]['templates']
+    return template_list
+
+
+def create_commit_template(template_name, project_name, template_content, dnac_jwt_token):
+    """
+    This function will create and commit a CLI template, under the project with the name {project_name}, with the the text content
+    {template_content}
+    :param template_name: CLI template name
+    :param project_name: Project name
+    :param template_content: CLI template text content
+    :param dnac_jwt_token: DNA C token
+    :return:
+    """
+    project_id = get_project_id(project_name, dnac_jwt_token)
+
+    # prepare the template param to sent to DNA C
+    payload = {
+            "name": template_name,
+            "description": "Remote router configuration",
+            "tags": [],
+            "author": "admin",
+            "deviceTypes": [
+                {
+                    "productFamily": "Routers"
+                },
+                {
+                    "productFamily": "Switches and Hubs"
+                }
+            ],
+            "softwareType": "IOS-XE",
+            "softwareVariant": "XE",
+            "softwareVersion": "",
+            "templateContent": template_content,
+            "rollbackTemplateContent": "",
+            "templateParams": [],
+            "rollbackTemplateParams": [],
+            "parentTemplateId": project_id
+        }
+
+    # check and delete older versions of the template
+    template_id = get_template_id(template_name, project_name, dnac_jwt_token)
+    if template_id:
+        delete_template(template_name, project_name, dnac_jwt_token)
+
+    # create the new template
+    url = DNAC_URL + '/api/v1/template-programmer/project/' + project_id + '/template'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
+
+    # get the template id
+    template_id = get_template_id(template_name, project_name, dnac_jwt_token)
+
+    # commit template
+    commit_template(template_id, 'committed by Python script', dnac_jwt_token)
+
+
+def commit_template(template_id, comments, dnac_jwt_token):
+    """
+    This function will commit the template with the template id {template_id}
+    :param template_id: template id
+    :param comments: text with comments
+    :param dnac_jwt_token: DNA C token
+    :return:
+    """
+    url = DNAC_URL + '/api/v1/template-programmer/template/version'
+    payload = {
+            "templateId": template_id,
+            "comments": comments
+        }
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
+
+
+def delete_template(template_name, project_name, dnac_jwt_token):
+    """
+    This function will delete the template with the name {template_name}
+    :param template_name: template name
+    :param project_name: Project name
+    :param dnac_jwt_token: DNA C token
+    :return:
+    """
+    template_id = get_template_id(template_name, project_name, dnac_jwt_token)
+    url = DNAC_URL + '/api/v1/template-programmer/template/' + template_id
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.delete(url, headers=header, verify=False)
+
+
+def get_all_template_info(dnac_jwt_token):
+    """
+    This function will return the info for all CLI templates existing on DNA C, including all their versions
     :param dnac_jwt_token: DNA C token
     :return: all info for all templates
     """
     url = DNAC_URL + '/api/v1/template-programmer/template'
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
+    all_template_list = response.json()
+    return all_template_list
+
+
+def get_template_name_info(template_name, dnac_jwt_token):
+    """
+    This function will return the info for the CLI template with the name {template_name}
+    :param template_name: template name
+    :param dnac_jwt_token: DNA C token
+    :return: all info for all templates
+    """
+    template_id = get_template_id(template_name, dnac_jwt_token)
+    url = DNAC_URL + '/api/v1/template-programmer/template/' + template_id
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
     template_json = response.json()
     return template_json
 
 
-def get_template_id(template_name, dnac_jwt_token):
+def get_template_id(template_name, project_name, dnac_jwt_token):
     """
-    This function will return the template id for the DNA C template with the name {template_name}
+    This function will return the latest version template id for the DNA C template with the name {template_name},
+    part of the project with the name {project_name}
     :param template_name: name of the template
+    :param project_name: Project name
     :param dnac_jwt_token: DNA C token
     :return: DNA C template id
     """
-    template_list = get_template_info(dnac_token)
-    template_id = 'template'
+    template_list = get_project_info(project_name, dnac_jwt_token)
+    template_id = None
     for template in template_list:
         if template['name'] == template_name:
-            template_version_list = template['versionsInfo']
-            pprint(template_version_list)
-            # to get the last template version, the template list is not ordered
-            version_list_len = len(template_version_list)
-            for version in template_version_list:
-                if version['version'] == str(version_list_len):
-                    template_id = version['id']
+            template_id = template['id']
     return template_id
 
 
-def deploy_template(template_name, device_name, dnac_jwt_token):
+def deploy_template(template_name, project_name, device_name, dnac_jwt_token):
     """
     This function will deploy the template with the name {template_name} to the network device with the name
     {device_name}
     :param template_name: template name
+    :param project_name: project name
     :param device_name: device hostname
     :param dnac_jwt_token: DNA C token
     :return: deployment status ({202} if successful), and the deployment task id
     """
-    device_management_ip = get_device_management_ip_name(device_name, dnac_jwt_token)
-    template_id = get_template_id(template_name, dnac_jwt_token)
-    print(template_id)
+    device_management_ip = get_device_management_ip(device_name, dnac_jwt_token)
+    template_id = get_template_id(template_name, project_name, dnac_jwt_token)
     payload = {
             "templateId": template_id,
             "targetInfo": [
@@ -141,11 +266,10 @@ def check_template_deployment_status(depl_task_id, dnac_jwt_token):
     :param dnac_jwt_token: DNA C token
     :return: status - {SUCCESS} = successful, {FAILURE} = unsuccessful
     """
-    url = DNAC_URL + '/api/v1/template-programmer/template/deploy/status/' + deployment_task_id
+    url = DNAC_URL + '/api/v1/template-programmer/template/deploy/status/' + depl_task_id
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     response_json = response.json()
-    pprint(response_json)
     deployment_status = response_json["status"]
     return deployment_status
 
@@ -183,7 +307,7 @@ def get_device_id_name(device_name, dnac_jwt_token):
     return device_id
 
 
-def get_device_management_ip_name(device_name, dnac_jwt_token):
+def get_device_management_ip(device_name, dnac_jwt_token):
     """
     This function will find out the management IP address for the device with the name {device_name}
     :param device_name: device name
@@ -551,13 +675,27 @@ def get_path_visualisation_info(path_id, dnac_jwt_token):
 dnac_token = get_dnac_jwt_token(DNAC_AUTH)
 print('DNA C Token: ', dnac_token)
 
-deployment = deploy_template('GRERemoteConfig', 'NYC-9300', dnac_token) # to test template deployments
+template_content = 'ip prefix-list REMOTE_ACCESS_PLIST seq 5 permit 10.93.140.35/32\nrouter eigrp 201\ninterface l201'
 
-deployment_task_id = deployment[1]
+create_commit_template('Remote', 'ERNA', template_content, dnac_token)
 
-time.sleep(5)
+get_template_id('Remote', 'ERNA', dnac_token)
 
-# check_template_deployment_status(deployment_task_id, dnac_token))
+pprint(get_template_info(dnac_token))
+
+# create_commit_template('Remote', 'ERNA', template_content, dnac_token)
+
+# delete_template('Remote', dnac_token)
+
+# pprint(get_template_name_info('GRE_Remote_Config', dnac_token))
+
+# deployment = deploy_template('GRE_Remote_Config', 'NYC-9300', dnac_token) # to test template deployments
+
+# deployment_task_id = deployment[1]
+
+# time.sleep(5)
+
+# print(check_template_deployment_status(deployment_task_id, dnac_token))
 
 # create_site('USA', dnac_token)
 # print('site id', get_site_id('USA', dnac_token))
