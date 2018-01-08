@@ -1,6 +1,8 @@
 
 .idea
 /modules_init.py
+/test_python_modules.py
+/test_python_modules_advanced.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

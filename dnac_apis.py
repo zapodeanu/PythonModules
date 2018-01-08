@@ -27,6 +27,8 @@ DNAC_PASS = 'Cisco123'
 # DNAC_USER = 'admin'
 # DNAC_PASS = 'C1sco1234'
 
+
+
 DNAC_AUTH = HTTPBasicAuth(DNAC_USER, DNAC_PASS)
 
 
@@ -98,13 +100,13 @@ def get_project_info(project_name, dnac_jwt_token):
     return template_list
 
 
-def create_commit_template(template_name, project_name, template_content, dnac_jwt_token):
+def create_commit_template(template_name, project_name, cli_template, dnac_jwt_token):
     """
     This function will create and commit a CLI template, under the project with the name {project_name}, with the the text content
-    {template_content}
+    {cli_template}
     :param template_name: CLI template name
     :param project_name: Project name
-    :param template_content: CLI template text content
+    :param cli_template: CLI template text content
     :param dnac_jwt_token: DNA C token
     :return:
     """
@@ -127,7 +129,7 @@ def create_commit_template(template_name, project_name, template_content, dnac_j
             "softwareType": "IOS-XE",
             "softwareVariant": "XE",
             "softwareVersion": "",
-            "templateContent": template_content,
+            "templateContent": cli_template,
             "rollbackTemplateContent": "",
             "templateParams": [],
             "rollbackTemplateParams": [],
@@ -135,9 +137,9 @@ def create_commit_template(template_name, project_name, template_content, dnac_j
         }
 
     # check and delete older versions of the template
-    template_id = get_template_id(template_name, project_name, dnac_jwt_token)
-    if template_id:
-        delete_template(template_name, project_name, dnac_jwt_token)
+    # template_id = get_template_id(template_name, project_name, dnac_jwt_token)
+    # if template_id:
+    #    delete_template(template_name, project_name, dnac_jwt_token)
 
     # create the new template
     url = DNAC_URL + '/api/v1/template-programmer/project/' + project_id + '/template'
@@ -168,6 +170,69 @@ def commit_template(template_id, comments, dnac_jwt_token):
     response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
 
 
+def update_commit_template(template_name, project_name, cli_template, dnac_jwt_token):
+    """
+    This function will update an existing template
+    :param template_name: template name
+    :param project_name: project name
+    :param cli_template: CLI template text content
+    :param dnac_jwt_token: DNA C token
+    :return:
+    """
+    # get the project id
+    project_id = get_project_id(project_name, dnac_jwt_token)
+
+    # get the template id
+    template_id = get_template_id(template_name, project_name, dnac_jwt_token)
+    url = DNAC_URL + '/api/v1/template-programmer/template'
+
+    # prepare the template param to sent to DNA C
+    payload = {
+        "name": template_name,
+        "description": "Remote router configuration",
+        "tags": [],
+        "id": template_id,
+        "author": "admin",
+        "deviceTypes": [
+            {
+                "productFamily": "Routers"
+            },
+            {
+                "productFamily": "Switches and Hubs"
+            }
+        ],
+        "softwareType": "IOS-XE",
+        "softwareVariant": "XE",
+        "softwareVersion": "",
+        "templateContent": cli_template,
+        "rollbackTemplateContent": "",
+        "templateParams": [],
+        "rollbackTemplateParams": [],
+        "parentTemplateId": project_id
+    }
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.put(url, data=json.dumps(payload), headers=header, verify=False)
+
+    # commit template
+    commit_template(template_id, 'committed by Python script', dnac_jwt_token)
+
+
+def upload_template(template_name, project_name, cli_template, dnac_jwt_token):
+    """
+    This function will create and deploy a new template if not existing, or will update an existing template.
+    :param template_name: template name
+    :param project_name: project name
+    :param cli_template: CLI template text content
+    :param dnac_jwt_token: DNA C token
+    :return:
+    """
+    template_id = get_template_id(template_name, project_name, dnac_jwt_token)
+    if template_id:
+        update_commit_template(template_name, project_name, cli_template, dnac_jwt_token)
+    else:
+        create_commit_template(template_name, project_name, cli_template, dnac_jwt_token)
+
+
 def delete_template(template_name, project_name, dnac_jwt_token):
     """
     This function will delete the template with the name {template_name}
@@ -180,6 +245,7 @@ def delete_template(template_name, project_name, dnac_jwt_token):
     url = DNAC_URL + '/api/v1/template-programmer/template/' + template_id
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     response = requests.delete(url, headers=header, verify=False)
+    print(response.text)
 
 
 def get_all_template_info(dnac_jwt_token):
@@ -195,14 +261,15 @@ def get_all_template_info(dnac_jwt_token):
     return all_template_list
 
 
-def get_template_name_info(template_name, dnac_jwt_token):
+def get_template_name_info(template_name, project_name, dnac_jwt_token):
     """
     This function will return the info for the CLI template with the name {template_name}
     :param template_name: template name
+    :param project_name: Project name
     :param dnac_jwt_token: DNA C token
     :return: all info for all templates
     """
-    template_id = get_template_id(template_name, dnac_jwt_token)
+    template_id = get_template_id(template_name, project_name, dnac_jwt_token)
     url = DNAC_URL + '/api/v1/template-programmer/template/' + template_id
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
@@ -235,7 +302,7 @@ def deploy_template(template_name, project_name, device_name, dnac_jwt_token):
     :param project_name: project name
     :param device_name: device hostname
     :param dnac_jwt_token: DNA C token
-    :return: deployment status ({202} if successful), and the deployment task id
+    :return: the deployment task id
     """
     device_management_ip = get_device_management_ip(device_name, dnac_jwt_token)
     template_id = get_template_id(template_name, project_name, dnac_jwt_token)
@@ -249,14 +316,11 @@ def deploy_template(template_name, project_name, device_name, dnac_jwt_token):
                 }
             ]
         }
-    pprint(payload)
     url = DNAC_URL + '/api/v1/template-programmer/template/deploy'
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     response = requests.post(url, headers=header, data=json.dumps(payload), verify=False)
-    print(response.text)
-    depl_status = response.status_code
     depl_task_id = (response.json())["deploymentId"]
-    return depl_status, depl_task_id
+    return depl_task_id
 
 
 def check_template_deployment_status(depl_task_id, dnac_jwt_token):
@@ -264,12 +328,13 @@ def check_template_deployment_status(depl_task_id, dnac_jwt_token):
     This function will check the result for the deployment of the CLI template with the id {depl_task_id}
     :param depl_task_id: template deployment id
     :param dnac_jwt_token: DNA C token
-    :return: status - {SUCCESS} = successful, {FAILURE} = unsuccessful
+    :return: status - {SUCCESS} or {FAILURE}
     """
     url = DNAC_URL + '/api/v1/template-programmer/template/deploy/status/' + depl_task_id
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     response_json = response.json()
+    pprint(response_json)
     deployment_status = response_json["status"]
     return deployment_status
 
@@ -279,7 +344,7 @@ def locate_client_ip(client_ip, dnac_jwt_token):
     Locate a wired client device in the infrastructure by using the client IP address
     Call to DNA C - api/v1/host?hostIp={client_ip}
     :param client_ip: Client IP Address
-    :param ticket: APIC-EM ticket
+    :param dnac_jwt_token: DNA C token
     :return: hostname, interface_name, vlan_id
     """
     url = DNAC_URL + '/api/v1/host?hostIp=' + client_ip
@@ -299,6 +364,7 @@ def get_device_id_name(device_name, dnac_jwt_token):
     :param dnac_jwt_token: DNA C token
     :return:
     """
+    device_id = None
     device_info = get_all_device_info(dnac_jwt_token)
     device_list = device_info['response']
     for device in device_list:
@@ -314,6 +380,7 @@ def get_device_management_ip(device_name, dnac_jwt_token):
     :param dnac_jwt_token: DNA C token
     :return: the management ip address
     """
+    device_ip = None
     device_info = get_all_device_info(dnac_jwt_token)
     device_list = device_info['response']
     for device in device_list:
@@ -335,6 +402,22 @@ def get_device_id_sn(device_sn, dnac_jwt_token):
     device_info = device_response.json()
     device_id = device_info['response']['id']
     return device_id
+
+
+def get_device_location(device_name, dnac_jwt_token):
+    """
+    This function will find the location for the device with the name {device_name}
+    :param device_name: device name
+    :param dnac_jwt_token: DNA C token
+    :return: the location
+    """
+    device_id = get_device_id_name(device_name, dnac_jwt_token)
+    url = DNAC_URL + '/api/v1/group/member/' + device_id + '?groupType=SITE'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    device_response = requests.get(url, headers=header, verify=False)
+    device_info = (device_response.json())['response']
+    device_location = device_info[0]['groupNameHierarchy']
+    return device_location
 
 
 def create_site(site_name, dnac_jwt_token):
@@ -374,6 +457,7 @@ def get_site_id(site_name, dnac_jwt_token):
     :param dnac_jwt_token: DNA C token
     :return: DNA C site id
     """
+    site_id = None
     url = DNAC_URL + '/api/v1/group?groupType=SITE'
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     site_response = requests.get(url, headers=header, verify=False)
@@ -436,6 +520,7 @@ def get_building_id(building_name, dnac_jwt_token):
     :param dnac_jwt_token: DNA C token
     :return: DNA C building id
     """
+    building_id = None
     url = DNAC_URL + '/api/v1/group?groupType=SITE'
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     building_response = requests.get(url, headers=header, verify=False)
@@ -508,6 +593,7 @@ def get_floor_id(building_name, floor_name, dnac_jwt_token):
     :param dnac_jwt_token: DNA C token
     :return: floor_id
     """
+    floor_id = None
     building_id = get_building_id(building_name, dnac_jwt_token)
     url = DNAC_URL + '/api/v1/group' + building_id + '/child?level=1'
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
@@ -594,14 +680,14 @@ def check_task_id_status(task_id, dnac_jwt_token):
     This function will check the status of the task with the id {task_id}
     :param task_id: task id
     :param dnac_jwt_token: DNA C token
-    :return: status - {SUCCESS} = successful, {FAILURE} = unsuccessful
+    :return: status - {SUCCESS} or {FAILURE}
     """
     url = DNAC_URL + '/api/v1/task/' + task_id
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     task_response = requests.get(url, headers=header, verify=False)
     task_json = task_response.json()
     task_status = task_json['response']['isError']
-    if task_status == False:
+    if not task_status:
         task_result = 'SUCCESS'
     else:
         task_result = 'FAILURE'
@@ -628,18 +714,16 @@ def create_path_visualisation(src_ip, dest_ip, dnac_jwt_token):
     header = {'accept': 'application/json', 'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     path_response = requests.post(url, data=json.dumps(param), headers=header, verify=False)
     path_json = path_response.json()
-    print(path_response.status_code)
-    print(path_response.text)
     path_id = path_json['response']['flowAnalysisId']
     return path_id
 
 
 def get_path_visualisation_info(path_id, dnac_jwt_token):
     """
-    This function will return the path visualisation details for the APIC-EM path visualisation {id}
+    This function will return the path visualisation details for the path visualisation {id}
     :param path_id: DNA C path visualisation id
     :param dnac_jwt_token: DNA C token
-    :return: Path visualisation details in a list [device,interface_out,interface_in,device...]
+    :return: Path visualisation status, and the details in a list [device,interface_out,interface_in,device...]
     """
 
     url = DNAC_URL + '/api/v1/flow-analysis/' + path_id
@@ -669,6 +753,9 @@ def get_path_visualisation_info(path_id, dnac_jwt_token):
                 pass
         path_list.append(path_info['request']['destIP'])
     return path_status, path_list
+
+
+
 
 
 
