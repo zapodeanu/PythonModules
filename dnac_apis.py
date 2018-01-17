@@ -12,20 +12,11 @@ from urllib3.exceptions import InsecureRequestWarning  # for insecure https warn
 
 from requests.auth import HTTPBasicAuth  # for Basic Auth
 
+from modules_init import DNAC_URL, DNAC_USER, DNAC_PASS
+
 # from modules_init import GOOGLE_API_KEY
 
 urllib3.disable_warnings(InsecureRequestWarning)  # disable insecure https warnings
-
-# use the DNA Center controller
-
-DNAC_URL = 'https://172.28.97.216'
-DNAC_USER = 'admin'
-DNAC_PASS = 'Cisco123'
-
-# DNAC_URL = 'https://10.93.140.80'
-# DNAC_USER = 'admin'
-# DNAC_PASS = 'C1sco1234'
-
 
 
 DNAC_AUTH = HTTPBasicAuth(DNAC_USER, DNAC_PASS)
