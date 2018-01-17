@@ -6,16 +6,15 @@
 import requests
 import json
 import time
+import urllib3
 
-import requests.packages.urllib3
-
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from urllib3.exceptions import InsecureRequestWarning  # for insecure https warnings
 
 from requests.auth import HTTPBasicAuth  # for Basic Auth
 
 # from modules_init import GOOGLE_API_KEY
 
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)  # Disable insecure https warnings
+urllib3.disable_warnings(InsecureRequestWarning)  # disable insecure https warnings
 
 # use the DNA Center controller
 
