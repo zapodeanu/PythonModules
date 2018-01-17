@@ -758,16 +758,16 @@ def get_path_visualisation_info(path_id, dnac_jwt_token):
 
 
 
-dnac_token = get_dnac_jwt_token(DNAC_AUTH)
-print('DNA C Token: ', dnac_token)
+# dnac_token = get_dnac_jwt_token(DNAC_AUTH)
+# print('DNA C Token: ', dnac_token)
 
-template_content = 'ip prefix-list REMOTE_ACCESS_PLIST seq 5 permit 10.93.140.35/32\nrouter eigrp 201\ninterface l201'
+# template_content = 'ip prefix-list REMOTE_ACCESS_PLIST seq 5 permit 10.93.140.35/32\nrouter eigrp 201\ninterface l201'
 
-create_commit_template('Remote', 'ERNA', template_content, dnac_token)
+# create_commit_template('Remote', 'ERNA', template_content, dnac_token)
 
-get_template_id('Remote', 'ERNA', dnac_token)
+# get_template_id('Remote', 'ERNA', dnac_token)
 
-pprint(get_template_info(dnac_token))
+# pprint(get_template_info(dnac_token))
 
 # create_commit_template('Remote', 'ERNA', template_content, dnac_token)
 
