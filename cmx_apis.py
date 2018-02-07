@@ -7,27 +7,29 @@
 
 import requests
 import json
+import urllib3
 
 from modules_init import CMX_URL, CMX_USER, CMX_PASSW
 
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from urllib3.exceptions import InsecureRequestWarning
 
 from requests.auth import HTTPBasicAuth  # for Basic Auth
 
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)  # Disable insecure https warnings
+urllib3.disable_warnings(InsecureRequestWarning)  # disable insecure https warnings
 
 CMX_AUTH = HTTPBasicAuth(CMX_USER, CMX_PASSW)
 
 
-def create_notification():
+def create_notification(notification_name):
     """
-    This function will create a notification
-    :return:
+    This function will create a notification with the name {notification_name}
+    :param notification_name - notification name
+    :return status code for the notification request
     """
     url = CMX_URL + '/api/config/v1/notification'
     print('CMX URL and Resource: ', url)
     payload = {
-            "name": "Gabi_notification_api",
+            "name": notification_name,
             "rules": [
                 {
                     "conditions": [
@@ -47,7 +49,7 @@ def create_notification():
                 {
                     "receivers": [
                         {
-                            "uri": "http://128.107.70.29:8050",
+                            "uri": "http://128.107.70.29:8010",
                             "messageFormat": "JSON",
                             "qos": "AT_MOST_ONCE"
                         }
@@ -62,6 +64,7 @@ def create_notification():
     header = {'content-type': 'application/json', 'accept': 'application/json'}
     notification_response = requests.put(url, data=json.dumps(payload), headers=header, auth=CMX_AUTH, verify=False)
     print('Notification Status Code: ', notification_response.status_code)
+    return notification_response.status_code
 
 
 def all_client_number():
@@ -172,3 +175,5 @@ def all_client_assoc_ap(ap_mac):
             clients_mac_info.append(client['macAddress'])
     return clients_mac_info
 
+
+create_notification('Gabi_Notification_inout')
