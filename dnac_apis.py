@@ -1,23 +1,26 @@
+#! /usr/bin/env python3
 
 # developed by Gabi Zapodeanu, TSA, GPO, Cisco Systems
 
-# !/usr/bin/env python3
 
 import requests
 import json
 import time
+import os
+import os.path
 import urllib3
+import socket
+import re
+import utils
 
 from urllib3.exceptions import InsecureRequestWarning  # for insecure https warnings
-
 from requests.auth import HTTPBasicAuth  # for Basic Auth
 
-from modules_init import DNAC_URL, DNAC_USER, DNAC_PASS
+from init import GOOGLE_API_KEY
+from init import DNAC_URL, DNAC_PASS, DNAC_USER
 
-# from modules_init import GOOGLE_API_KEY
 
 urllib3.disable_warnings(InsecureRequestWarning)  # disable insecure https warnings
-
 
 DNAC_AUTH = HTTPBasicAuth(DNAC_USER, DNAC_PASS)
 
@@ -57,7 +60,21 @@ def get_all_device_info(dnac_jwt_token):
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     all_device_response = requests.get(url, headers=header, verify=False)
     all_device_info = all_device_response.json()
-    return all_device_info
+    return all_device_info['response']
+
+
+def get_device_info(device_id, dnac_jwt_token):
+    """
+    This function will retrieve all the information for the device with the DNA C device id
+    :param device_id: DNA C device_id
+    :param dnac_jwt_token: DNA C token
+    :return: device info
+    """
+    url = DNAC_URL + '/api/v1/network-device?id=' + device_id
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    device_response = requests.get(url, headers=header, verify=False)
+    device_info = device_response.json()
+    return device_info['response']
 
 
 def get_project_id(project_name, dnac_jwt_token):
@@ -284,6 +301,31 @@ def get_template_id(template_name, project_name, dnac_jwt_token):
     return template_id
 
 
+def get_template_id_version(template_name, project_name, dnac_jwt_token):
+    """
+    This function will return the latest version template id for the DNA C template with the name {template_name},
+    part of the project with the name {project_name}
+    :param template_name: name of the template
+    :param project_name: Project name
+    :param dnac_jwt_token: DNA C token
+    :return: DNA C template id for the last version
+    """
+    project_id = get_project_id(project_name, dnac_jwt_token)
+    url = DNAC_URL + '/api/v1/template-programmer/template?projectId=' + project_id + '&includeHead=false'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    project_json = response.json()
+    for template in project_json:
+        if template['name'] == template_name:
+            version = 0
+            versions_info = template['versionsInfo']
+            for ver in versions_info:
+                if int(ver['version']) > version:
+                    template_id_ver = ver['id']
+                    version = int(ver['version'])
+    return template_id_ver
+
+
 def deploy_template(template_name, project_name, device_name, dnac_jwt_token):
     """
     This function will deploy the template with the name {template_name} to the network device with the name
@@ -295,7 +337,7 @@ def deploy_template(template_name, project_name, device_name, dnac_jwt_token):
     :return: the deployment task id
     """
     device_management_ip = get_device_management_ip(device_name, dnac_jwt_token)
-    template_id = get_template_id(template_name, project_name, dnac_jwt_token)
+    template_id = get_template_id_version(template_name, project_name, dnac_jwt_token)
     payload = {
             "templateId": template_id,
             "targetInfo": [
@@ -324,9 +366,26 @@ def check_template_deployment_status(depl_task_id, dnac_jwt_token):
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     response_json = response.json()
-    pprint(response_json)
     deployment_status = response_json["status"]
     return deployment_status
+
+
+def get_client_info(client_ip, dnac_jwt_token):
+    """
+    This function will retrieve all the information from the client with the IP address
+    :param client_ip: client IPv4 address
+    :param dnac_jwt_token: DNA C token
+    :return: client info, or {None} if client does not found
+    """
+    url = DNAC_URL + '/api/v1/host?hostIp=' + client_ip
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    client_json = response.json()
+    try:
+        client_info = client_json['response'][0]
+        return client_info
+    except:
+        return None
 
 
 def locate_client_ip(client_ip, dnac_jwt_token):
@@ -335,16 +394,17 @@ def locate_client_ip(client_ip, dnac_jwt_token):
     Call to DNA C - api/v1/host?hostIp={client_ip}
     :param client_ip: Client IP Address
     :param dnac_jwt_token: DNA C token
-    :return: hostname, interface_name, vlan_id
+    :return: hostname, interface_name, vlan_id, or None, if the client does not exist
     """
-    url = DNAC_URL + '/api/v1/host?hostIp=' + client_ip
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
-    response = requests.get(url, headers=header, verify=False)
-    client_info = response.json()
-    hostname = client_info['response'][0]['connectedNetworkDeviceName']
-    interface_name = client_info['response'][0]['connectedInterfaceName']
-    vlan_id = client_info['response'][0]['vlanId']
-    return hostname, interface_name, vlan_id
+
+    client_info = get_client_info(client_ip, dnac_jwt_token)
+    if client_info is not None:
+        hostname = client_info['connectedNetworkDeviceName']
+        interface_name = client_info['connectedInterfaceName']
+        vlan_id = client_info['vlanId']
+        return hostname, interface_name, vlan_id
+    else:
+        return None
 
 
 def get_device_id_name(device_name, dnac_jwt_token):
@@ -355,12 +415,31 @@ def get_device_id_name(device_name, dnac_jwt_token):
     :return:
     """
     device_id = None
-    device_info = get_all_device_info(dnac_jwt_token)
-    device_list = device_info['response']
+    device_list = get_all_device_info(dnac_jwt_token)
     for device in device_list:
         if device['hostname'] == device_name:
             device_id = device['id']
     return device_id
+
+
+def get_device_status(device_name, dnac_jwt_token):
+    """
+    This function will return the reachability status for the network device with the name {device_name}
+    :param device_name: device name
+    :param dnac_jwt_token: DNA C token
+    :return: status - {UNKNOWN} to locate a device in the database,
+                      {SUCCESS} device reachable
+                      {FAILURE} device not reachable
+    """
+    device_id = get_device_id_name(device_name, dnac_jwt_token)
+    if device_id is None:
+        return 'UNKNOWN'
+    else:
+        device_info = get_device_info(device_id, dnac_jwt_token)
+        if device_info['reachabilityStatus'] == 'Reachable':
+            return 'SUCCESS'
+        else:
+            return 'FAILURE'
 
 
 def get_device_management_ip(device_name, dnac_jwt_token):
@@ -371,8 +450,7 @@ def get_device_management_ip(device_name, dnac_jwt_token):
     :return: the management ip address
     """
     device_ip = None
-    device_info = get_all_device_info(dnac_jwt_token)
-    device_list = device_info['response']
+    device_list = get_all_device_info(dnac_jwt_token)
     for device in device_list:
         if device['hostname'] == device_name:
             device_ip = device['managementIpAddress']
@@ -684,9 +762,9 @@ def check_task_id_status(task_id, dnac_jwt_token):
     return task_result
 
 
-def create_path_visualisation(src_ip, dest_ip, dnac_jwt_token):
+def create_path_trace(src_ip, dest_ip, dnac_jwt_token):
     """
-    This function will create a new Path Visualisation between the source IP address {src_ip} and the
+    This function will create a new Path Trace between the source IP address {src_ip} and the
     destination IP address {dest_ip}
     :param src_ip: Source IP address
     :param dest_ip: Destination IP address
@@ -708,9 +786,9 @@ def create_path_visualisation(src_ip, dest_ip, dnac_jwt_token):
     return path_id
 
 
-def get_path_visualisation_info(path_id, dnac_jwt_token):
+def get_path_trace_info(path_id, dnac_jwt_token):
     """
-    This function will return the path visualisation details for the path visualisation {id}
+    This function will return the path trace details for the path visualisation {id}
     :param path_id: DNA C path visualisation id
     :param dnac_jwt_token: DNA C token
     :return: Path visualisation status, and the details in a list [device,interface_out,interface_in,device...]
@@ -720,8 +798,6 @@ def get_path_visualisation_info(path_id, dnac_jwt_token):
     header = {'accept': 'application/json', 'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     path_response = requests.get(url, headers=header, verify=False)
     path_json = path_response.json()
-    print(path_response.status_code)
-    pprint(path_json)
     path_info = path_json['response']
     path_status = path_info['request']['status']
     path_list = []
@@ -745,58 +821,142 @@ def get_path_visualisation_info(path_id, dnac_jwt_token):
     return path_status, path_list
 
 
+def check_ipv4_network_interface(ip_address, dnac_jwt_token):
+    """
+    This function will check if the provided IPv4 address is configured on any network interfaces
+    :param ip_address: IPv4 address
+    :param dnac_jwt_token: DNA C token
+    :return: None, or device_hostname and interface_name
+    """
+    url = DNAC_URL + '/api/v1/interface/ip-address/' + ip_address
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    response_json = response.json()
+    try:
+        response_info = response_json['response'][0]
+        interface_name = response_info['portName']
+        device_id = response_info['deviceId']
+        device_info = get_device_info(device_id, dnac_jwt_token)
+        device_hostname = device_info['hostname']
+        return device_hostname, interface_name
+    except:
+        device_info = get_device_info_ip(ip_address, dnac_jwt_token)  # required for AP's
+        device_hostname = device_info['hostname']
+        return (device_hostname,)
 
 
+def get_device_info_ip(ip_address, dnac_jwt_token):
+    """
+    This function will retrieve the device information for the device with the management IPv4 address {ip_address}
+    :param ip_address: device management ip address
+    :param dnac_jwt_token: DNA C token
+    :return: device information, or None
+    """
+    url = DNAC_URL + '/api/v1/network-device/ip-address/' + ip_address
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    response_json = response.json()
+    device_info = response_json['response']
+    if 'errorCode' == 'Not found':
+        return None
+    else:
+        return device_info
 
 
-# dnac_token = get_dnac_jwt_token(DNAC_AUTH)
-# print('DNA C Token: ', dnac_token)
+def check_ipv4_address(ipv4_address, dnac_jwt_token):
+    """
+    This function will find if the IPv4 address is configured on any network interfaces or used by any hosts.
+    :param ipv4_address: IPv4 address
+    :param dnac_jwt_token: DNA C token
+    :return: True/False
+    """
+    # check against network devices interfaces
+    try:
+        device_info = check_ipv4_network_interface(ipv4_address, dnac_token)
+        return True
+    except:
+        # check against any hosts
+        try:
+            client_info = get_client_info(ipv4_address, dnac_token)
+            if client_info is not None:
+                return True
+        except:
+            pass
+    return False
 
-# template_content = 'ip prefix-list REMOTE_ACCESS_PLIST seq 5 permit 10.93.140.35/32\nrouter eigrp 201\ninterface l201'
 
-# create_commit_template('Remote', 'ERNA', template_content, dnac_token)
+def check_ipv4_address_configs(ipv4_address, dnac_jwt_token):
+    """
+    This function will verify if the IPv4 address is present in any of the configurations of any devices
+    :param ipv4_address: IPv4 address
+    :param dnac_jwt_token: DNA C token
+    :return: True/False
+    """
+    url = DNAC_URL + '/api/v1/network-device/config'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    config_json = response.json()
+    config_files = config_json['response']
+    for config in config_files:
+        run_config = config['runningConfig']
+        if ipv4_address in run_config:
+            return True
+    return False
 
-# get_template_id('Remote', 'ERNA', dnac_token)
 
-# pprint(get_template_info(dnac_token))
+def check_ipv4_duplicate(config_file):
+    """
+    This function will:
+      - load a file with a configuration to be deployed to a network device
+      - identify the IPv4 addresses that will be configured on interfaces
+      - search in the DNA Center database if these IPV4 addresses are configured on any interfaces
+      - find if any clients are using the IPv4 addresses
+      - Determine if deploying the configuration file will create an IP duplicate
+    :param config_file: configuration file name
+    :return True/False
+    """
 
-# create_commit_template('Remote', 'ERNA', template_content, dnac_token)
+    # open file with the template
+    cli_file = open(config_file, 'r')
 
-# delete_template('Remote', dnac_token)
+    # read the file
+    cli_config = cli_file.read()
+    print('\n The CLI template:\n')
+    print(cli_config)
 
-# pprint(get_template_name_info('GRE_Remote_Config', dnac_token))
+    ipv4_address_list = utils.identify_ipv4_address(cli_config)
+    print('\nThese IPv4 addresses will be configured:\n')
+    print(ipv4_address_list)
 
-# deployment = deploy_template('GRE_Remote_Config', 'NYC-9300', dnac_token) # to test template deployments
+    # get the DNA Center Auth token
 
-# deployment_task_id = deployment[1]
+    dnac_token = get_dnac_jwt_token(DNAC_AUTH)
+    print('\nThe DNA Center token is: ', dnac_token, '\n')
 
-# time.sleep(5)
+    # check each address against network devices and clients database
+    # initialize duplicate_ip
 
-# print(check_template_deployment_status(deployment_task_id, dnac_token))
+    duplicate_ip = False
+    for ipv4_address in ipv4_address_list:
 
-# create_site('USA', dnac_token)
-# print('site id', get_site_id('USA', dnac_token))
-# create_building('USA', 'Sherwood', '23742 SW Pinehurst Dr., Sherwood, OR 97140', dnac_token)
-# print(get_building_id('Sherwood',dnac_token))
+        # check against network devices interfaces
 
-# create_floor('Sherwood', 'Floor 1', '1', dnac_token)
-# print(get_floor_id('Sherwood', 'Floor 1', dnac_token  ))
+        try:
+            device_info = check_ipv4_network_interface(ipv4_address, dnac_token)
+            duplicate_ip = True
+        except:
+            pass
 
-# assign_device_sn_building('FCW2123L0N3', 'Manhattan', dnac_token)
-# assign_device_name_building('PDX-RO', 'Lake Oswego', dnac_token)
+        # check against any hosts
 
-# sync_return = []
-# sync_return = sync_device('PDX-RO', dnac_token)
-# task_id = sync_return[1]
-# print('task id ', task_id)
-# print('status code ', sync_return[0])
+        try:
+            client_info = get_client_info(ipv4_address, dnac_token)
+            if client_info is not None:
+                duplicate_ip = True
+        except:
+            pass
 
-# time.sleep(3)
-
-# print(check_task_id_status(task_id, dnac_token))
-
-# path_trace_id = (create_path_visualisation('10.93.130.21', '10.93.140.35', dnac_token))
-# print(path_trace_id)
-# time.sleep(30)
-
-# get_path_visualisation_info(path_trace_id, dnac_token)
+    if duplicate_ip:
+        return True
+    else:
+        return False
