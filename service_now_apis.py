@@ -16,8 +16,8 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)  # Disable in
 
 
 # users roles :
-# SNOW_ADMIN = Application Interactions
-# SNOW_DEV = Device REST API Calls
+# SNOW_ADMIN = Admin role
+# SNOW_DEV = Device user role
 
 
 def get_last_incidents_list(incident_count):
