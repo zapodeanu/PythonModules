@@ -1,7 +1,8 @@
 
+#!/usr/bin/env python3
+
 # developed by Gabi Zapodeanu, TSA, GPO, Cisco Systems
 
-# !/usr/bin/env python3
 
 # this module includes common utilized functions to create applications using CMX APIs
 
@@ -175,5 +176,3 @@ def all_client_assoc_ap(ap_mac):
             clients_mac_info.append(client['macAddress'])
     return clients_mac_info
 
-
-create_notification('Gabi_Notification_inout')
