@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+
 
 # developed by Gabi Zapodeanu, TSA, GPO, Cisco Systems
 
@@ -16,9 +16,8 @@ import utils
 from urllib3.exceptions import InsecureRequestWarning  # for insecure https warnings
 from requests.auth import HTTPBasicAuth  # for Basic Auth
 
-from init import GOOGLE_API_KEY
-from init import DNAC_URL, DNAC_PASS, DNAC_USER
-
+from config import DNAC_URL, DNAC_PASS, DNAC_USER
+from config import GOOGLE_API_KEY
 
 urllib3.disable_warnings(InsecureRequestWarning)  # disable insecure https warnings
 
@@ -74,7 +73,7 @@ def get_device_info(device_id, dnac_jwt_token):
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     device_response = requests.get(url, headers=header, verify=False)
     device_info = device_response.json()
-    return device_info['response']
+    return device_info['response'][0]
 
 
 def get_project_id(project_name, dnac_jwt_token):
@@ -252,7 +251,6 @@ def delete_template(template_name, project_name, dnac_jwt_token):
     url = DNAC_URL + '/api/v1/template-programmer/template/' + template_id
     header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
     response = requests.delete(url, headers=header, verify=False)
-    print(response.text)
 
 
 def get_all_template_info(dnac_jwt_token):
@@ -762,6 +760,28 @@ def check_task_id_status(task_id, dnac_jwt_token):
     return task_result
 
 
+def check_task_id_output(task_id, dnac_jwt_token):
+    """
+    This function will check the status of the task with the id {task_id}. Loop one seconds increments until task is completed
+    :param task_id: task id
+    :param dnac_jwt_token: DNA C token
+    :return: status - {SUCCESS} or {FAILURE}
+    """
+    url = DNAC_URL + '/api/v1/task/' + task_id
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    completed = 'no'
+    while completed == 'no':
+        try:
+            task_response = requests.get(url, headers=header, verify=False)
+            task_json = task_response.json()
+            task_output = task_json['response']
+            task_output['endTime']
+            completed = 'yes'
+        except:
+            time.sleep(1)
+    return task_output
+
+
 def create_path_trace(src_ip, dest_ip, dnac_jwt_token):
     """
     This function will create a new Path Trace between the source IP address {src_ip} and the
@@ -842,7 +862,7 @@ def check_ipv4_network_interface(ip_address, dnac_jwt_token):
     except:
         device_info = get_device_info_ip(ip_address, dnac_jwt_token)  # required for AP's
         device_hostname = device_info['hostname']
-        return (device_hostname,)
+        return device_hostname, ''
 
 
 def get_device_info_ip(ip_address, dnac_jwt_token):
@@ -863,6 +883,107 @@ def get_device_info_ip(ip_address, dnac_jwt_token):
         return device_info
 
 
+def get_legit_cli_command_runner(dnac_jwt_token):
+    """
+    This function will get all the legit CLI commands supported by the {command runner} APIs
+    :param dnac_jwt_token: DNA C token
+    :return: list of CLI commands
+    """
+    url = DNAC_URL + '/api/v1/network-device-poller/cli/legit-reads'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    response_json = response.json()
+    cli_list = response_json['response']
+    return cli_list
+
+
+def get_content_file_id(file_id, dnac_jwt_token):
+    """
+    This function will download a file specified by the {file_id}
+    :param file_id: file id
+    :param dnac_jwt_token: DNA C token
+    :return: file
+    """
+    url = DNAC_URL + '/api/v1/file/' + file_id
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False, stream=True)
+    response_json = response.json()
+    return response_json
+
+
+def get_output_command_runner(command, device_name, dnac_jwt_token):
+    """
+    This function will return the output of the CLI command specified in the {command}, sent to the device with the
+    hostname {device}
+    :param command: CLI command
+    :param device_name: device hostname
+    :param dnac_jwt_token: DNA C token
+    :return: file with the command output
+    """
+
+    # get the DNA C device id
+    device_id = get_device_id_name(device_name, dnac_jwt_token)
+
+    # get the DNA C task id that will process the CLI command runner
+    payload = {
+        "commands": [command],
+        "deviceUuids": [device_id],
+        "timeout": 0
+        }
+    url = DNAC_URL + '/api/v1/network-device-poller/cli/read-request'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
+    response_json = response.json()
+    task_id = response_json['response']['taskId']
+
+    # get task id status
+    task_result = check_task_id_output(task_id, dnac_jwt_token)
+    file_info = json.loads(task_result['progress'])
+    file_id = file_info['fileId']
+
+    # get output from file
+    time.sleep(2)  # wait for a second for the file to be ready
+    file_output = get_content_file_id(file_id, dnac_jwt_token)
+    command_responses = file_output[0]['commandResponses']
+    if command_responses['SUCCESS'] is not {}:
+        command_output = command_responses['SUCCESS'][command]
+    elif command_responses['FAILURE'] is not {}:
+        command_output = command_responses['FAILURE'][command]
+    else:
+        command_output = command_responses['BLACKLISTED'][command]
+    return command_output
+
+
+def get_all_configs(dnac_jwt_token):
+    """
+    This function will retrieve all the devices configurations
+    :param dnac_jwt_token: DNA C token
+    :return: Return all config files in a list
+    """
+    url = DNAC_URL + '/api/v1/network-device/config'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    config_json = response.json()
+    config_files = config_json['response']
+    return config_files
+
+
+def get_device_config(device_name, dnac_jwt_token):
+    """
+    This function will get the configuration file for the device with the name {device_name}
+    :param device_name: device hostname
+    :param dnac_jwt_token: DNA C token
+    :return: configuration file
+    """
+    device_id = get_device_id_name(device_name, dnac_jwt_token)
+    url = DNAC_URL + '/api/v1/network-device/' + device_id + '/config'
+    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    config_json = response.json()
+    config_file = config_json['response']
+    return config_file
+
+
 def check_ipv4_address(ipv4_address, dnac_jwt_token):
     """
     This function will find if the IPv4 address is configured on any network interfaces or used by any hosts.
@@ -872,12 +993,12 @@ def check_ipv4_address(ipv4_address, dnac_jwt_token):
     """
     # check against network devices interfaces
     try:
-        device_info = check_ipv4_network_interface(ipv4_address, dnac_token)
+        device_info = check_ipv4_network_interface(ipv4_address, dnac_jwt_token)
         return True
     except:
         # check against any hosts
         try:
-            client_info = get_client_info(ipv4_address, dnac_token)
+            client_info = get_client_info(ipv4_address, dnac_jwt_token)
             if client_info is not None:
                 return True
         except:
@@ -921,17 +1042,12 @@ def check_ipv4_duplicate(config_file):
 
     # read the file
     cli_config = cli_file.read()
-    print('\n The CLI template:\n')
-    print(cli_config)
 
     ipv4_address_list = utils.identify_ipv4_address(cli_config)
-    print('\nThese IPv4 addresses will be configured:\n')
-    print(ipv4_address_list)
 
     # get the DNA Center Auth token
 
     dnac_token = get_dnac_jwt_token(DNAC_AUTH)
-    print('\nThe DNA Center token is: ', dnac_token, '\n')
 
     # check each address against network devices and clients database
     # initialize duplicate_ip
@@ -960,3 +1076,8 @@ def check_ipv4_duplicate(config_file):
         return True
     else:
         return False
+
+
+#dnac_token = get_dnac_jwt_token(DNAC_AUTH)
+#print(dnac_token)
+#print(deploy_template('Config_Rollback','PartnerSummit','NYC-9300',dnac_token))
