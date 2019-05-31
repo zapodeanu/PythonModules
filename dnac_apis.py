@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
 
 
-# developed by Gabi Zapodeanu, TSA, GPO, Cisco Systems
+# developed by Gabi Zapodeanu, TME, Enterprise Networks, Cisco Systems
 
 
 import requests
@@ -17,7 +18,7 @@ from urllib3.exceptions import InsecureRequestWarning  # for insecure https warn
 from requests.auth import HTTPBasicAuth  # for Basic Auth
 
 from config import DNAC_URL, DNAC_PASS, DNAC_USER
-from config import GOOGLE_API_KEY
+
 
 urllib3.disable_warnings(InsecureRequestWarning)  # disable insecure https warnings
 
@@ -41,11 +42,10 @@ def get_dnac_jwt_token(dnac_auth):
     :return: DNA C JWT token
     """
 
-    url = DNAC_URL + '/api/system/v1/auth/login'
+    url = DNAC_URL + '/dna/system/api/v1/auth/token'
     header = {'content-type': 'application/json'}
-    response = requests.get(url, auth=dnac_auth, headers=header, verify=False)
-    response_header = response.headers
-    dnac_jwt_token = response_header['Set-Cookie']
+    response = requests.post(url, auth=dnac_auth, headers=header, verify=False)
+    dnac_jwt_token = response.json()['Token']
     return dnac_jwt_token
 
 
@@ -56,7 +56,7 @@ def get_all_device_info(dnac_jwt_token):
     :return: DNA C device inventory info
     """
     url = DNAC_URL + '/api/v1/network-device'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     all_device_response = requests.get(url, headers=header, verify=False)
     all_device_info = all_device_response.json()
     return all_device_info['response']
@@ -70,10 +70,25 @@ def get_device_info(device_id, dnac_jwt_token):
     :return: device info
     """
     url = DNAC_URL + '/api/v1/network-device?id=' + device_id
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     device_response = requests.get(url, headers=header, verify=False)
     device_info = device_response.json()
     return device_info['response'][0]
+
+
+def delete_device(device_id, dnac_jwt_token):
+    """
+    This function will delete the device with the {device_id} from the DNA Center inventory
+    :param device_id: DNA C device_id
+    :param dnac_jwt_token: DNA C token
+    :return: delete status
+    """
+    url = DNAC_URL + '/dna/intent/api/v1/network-device/' + device_id
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
+    response = requests.delete(url, headers=header, verify=False)
+    delete_response = response.json()
+    delete_status = delete_response['response']
+    return delete_status
 
 
 def get_project_id(project_name, dnac_jwt_token):
@@ -84,7 +99,7 @@ def get_project_id(project_name, dnac_jwt_token):
     :return: project id
     """
     url = DNAC_URL + '/api/v1/template-programmer/project?name=' + project_name
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     proj_json = response.json()
     proj_id = proj_json[0]['id']
@@ -99,7 +114,7 @@ def get_project_info(project_name, dnac_jwt_token):
     :return: list of all templates, including names and ids
     """
     url = DNAC_URL + '/api/v1/template-programmer/project?name=' + project_name
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     project_json = response.json()
     template_list = project_json[0]['templates']
@@ -149,7 +164,7 @@ def create_commit_template(template_name, project_name, cli_template, dnac_jwt_t
 
     # create the new template
     url = DNAC_URL + '/api/v1/template-programmer/project/' + project_id + '/template'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
 
     # get the template id
@@ -172,7 +187,7 @@ def commit_template(template_id, comments, dnac_jwt_token):
             "templateId": template_id,
             "comments": comments
         }
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
 
 
@@ -216,7 +231,7 @@ def update_commit_template(template_name, project_name, cli_template, dnac_jwt_t
         "rollbackTemplateParams": [],
         "parentTemplateId": project_id
     }
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.put(url, data=json.dumps(payload), headers=header, verify=False)
 
     # commit template
@@ -249,7 +264,7 @@ def delete_template(template_name, project_name, dnac_jwt_token):
     """
     template_id = get_template_id(template_name, project_name, dnac_jwt_token)
     url = DNAC_URL + '/api/v1/template-programmer/template/' + template_id
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.delete(url, headers=header, verify=False)
 
 
@@ -260,7 +275,7 @@ def get_all_template_info(dnac_jwt_token):
     :return: all info for all templates
     """
     url = DNAC_URL + '/api/v1/template-programmer/template'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     all_template_list = response.json()
     return all_template_list
@@ -276,7 +291,7 @@ def get_template_name_info(template_name, project_name, dnac_jwt_token):
     """
     template_id = get_template_id(template_name, project_name, dnac_jwt_token)
     url = DNAC_URL + '/api/v1/template-programmer/template/' + template_id
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     template_json = response.json()
     return template_json
@@ -310,7 +325,7 @@ def get_template_id_version(template_name, project_name, dnac_jwt_token):
     """
     project_id = get_project_id(project_name, dnac_jwt_token)
     url = DNAC_URL + '/api/v1/template-programmer/template?projectId=' + project_id + '&includeHead=false'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     project_json = response.json()
     for template in project_json:
@@ -347,7 +362,7 @@ def deploy_template(template_name, project_name, device_name, dnac_jwt_token):
             ]
         }
     url = DNAC_URL + '/api/v1/template-programmer/template/deploy'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.post(url, headers=header, data=json.dumps(payload), verify=False)
     depl_task_id = (response.json())["deploymentId"]
     return depl_task_id
@@ -361,7 +376,7 @@ def check_template_deployment_status(depl_task_id, dnac_jwt_token):
     :return: status - {SUCCESS} or {FAILURE}
     """
     url = DNAC_URL + '/api/v1/template-programmer/template/deploy/status/' + depl_task_id
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     response_json = response.json()
     deployment_status = response_json["status"]
@@ -376,7 +391,7 @@ def get_client_info(client_ip, dnac_jwt_token):
     :return: client info, or {None} if client does not found
     """
     url = DNAC_URL + '/api/v1/host?hostIp=' + client_ip
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     client_json = response.json()
     try:
@@ -463,7 +478,7 @@ def get_device_id_sn(device_sn, dnac_jwt_token):
     :return: DNA C device id
     """
     url = DNAC_URL + '/api/v1/network-device/serial-number/' + device_sn
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     device_response = requests.get(url, headers=header, verify=False)
     device_info = device_response.json()
     device_id = device_info['response']['id']
@@ -479,7 +494,7 @@ def get_device_location(device_name, dnac_jwt_token):
     """
     device_id = get_device_id_name(device_name, dnac_jwt_token)
     url = DNAC_URL + '/api/v1/group/member/' + device_id + '?groupType=SITE'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     device_response = requests.get(url, headers=header, verify=False)
     device_info = (device_response.json())['response']
     device_location = device_info[0]['groupNameHierarchy']
@@ -512,7 +527,7 @@ def create_site(site_name, dnac_jwt_token):
         "id": ""
     }
     url = DNAC_URL + '/api/v1/group'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     requests.post(url, data=json.dumps(payload), headers=header, verify=False)
 
 
@@ -525,7 +540,7 @@ def get_site_id(site_name, dnac_jwt_token):
     """
     site_id = None
     url = DNAC_URL + '/api/v1/group?groupType=SITE'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     site_response = requests.get(url, headers=header, verify=False)
     site_json = site_response.json()
     site_list = site_json['response']
@@ -575,7 +590,7 @@ def create_building(site_name, building_name, address, dnac_jwt_token):
         "id": ""
     }
     url = DNAC_URL + '/api/v1/group'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     requests.post(url, data=json.dumps(payload), headers=header, verify=False)
 
 
@@ -588,7 +603,7 @@ def get_building_id(building_name, dnac_jwt_token):
     """
     building_id = None
     url = DNAC_URL + '/api/v1/group?groupType=SITE'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     building_response = requests.get(url, headers=header, verify=False)
     building_json = building_response.json()
     building_list = building_json['response']
@@ -646,7 +661,7 @@ def create_floor(building_name, floor_name, floor_number, dnac_jwt_token):
         "id": ""
     }
     url = DNAC_URL + '/api/v1/group'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     requests.post(url, data=json.dumps(payload), headers=header, verify=False)
 
 
@@ -661,8 +676,8 @@ def get_floor_id(building_name, floor_name, dnac_jwt_token):
     """
     floor_id = None
     building_id = get_building_id(building_name, dnac_jwt_token)
-    url = DNAC_URL + '/api/v1/group' + building_id + '/child?level=1'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    url = DNAC_URL + '/api/v1/group/' + building_id + '/child?level=1'
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     building_response = requests.get(url, headers=header, verify=False)
     building_json = building_response.json()
     floor_list = building_json['response']
@@ -686,7 +701,7 @@ def assign_device_sn_building(device_sn, building_name, dnac_jwt_token):
 
     url = DNAC_URL + '/api/v1/group/' + building_id + '/member'
     payload = {"networkdevice": [device_id]}
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
     print('\nDevice with the SN: ', device_sn, 'assigned to building: ', building_name)
 
@@ -705,7 +720,7 @@ def assign_device_name_building(device_name, building_name, dnac_jwt_token):
 
     url = DNAC_URL + '/api/v1/group/' + building_id + '/member'
     payload = {"networkdevice": [device_id]}
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
     print('\nDevice with the name: ', device_name, 'assigned to building: ', building_name)
 
@@ -735,7 +750,7 @@ def sync_device(device_name, dnac_jwt_token):
     device_id = get_device_id_name(device_name, dnac_jwt_token)
     param = [device_id]
     url = DNAC_URL + '/api/v1/network-device/sync?forceSync=true'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     sync_response = requests.put(url, data=json.dumps(param), headers=header, verify=False)
     task = sync_response.json()['response']['taskId']
     return sync_response.status_code, task
@@ -749,7 +764,7 @@ def check_task_id_status(task_id, dnac_jwt_token):
     :return: status - {SUCCESS} or {FAILURE}
     """
     url = DNAC_URL + '/api/v1/task/' + task_id
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     task_response = requests.get(url, headers=header, verify=False)
     task_json = task_response.json()
     task_status = task_json['response']['isError']
@@ -768,7 +783,7 @@ def check_task_id_output(task_id, dnac_jwt_token):
     :return: status - {SUCCESS} or {FAILURE}
     """
     url = DNAC_URL + '/api/v1/task/' + task_id
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     completed = 'no'
     while completed == 'no':
         try:
@@ -799,7 +814,7 @@ def create_path_trace(src_ip, dest_ip, dnac_jwt_token):
     }
 
     url = DNAC_URL + '/api/v1/flow-analysis'
-    header = {'accept': 'application/json', 'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'accept': 'application/json', 'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     path_response = requests.post(url, data=json.dumps(param), headers=header, verify=False)
     path_json = path_response.json()
     path_id = path_json['response']['flowAnalysisId']
@@ -815,7 +830,7 @@ def get_path_trace_info(path_id, dnac_jwt_token):
     """
 
     url = DNAC_URL + '/api/v1/flow-analysis/' + path_id
-    header = {'accept': 'application/json', 'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'accept': 'application/json', 'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     path_response = requests.get(url, headers=header, verify=False)
     path_json = path_response.json()
     path_info = path_json['response']
@@ -849,7 +864,7 @@ def check_ipv4_network_interface(ip_address, dnac_jwt_token):
     :return: None, or device_hostname and interface_name
     """
     url = DNAC_URL + '/api/v1/interface/ip-address/' + ip_address
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     response_json = response.json()
     try:
@@ -873,7 +888,7 @@ def get_device_info_ip(ip_address, dnac_jwt_token):
     :return: device information, or None
     """
     url = DNAC_URL + '/api/v1/network-device/ip-address/' + ip_address
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     response_json = response.json()
     device_info = response_json['response']
@@ -890,7 +905,7 @@ def get_legit_cli_command_runner(dnac_jwt_token):
     :return: list of CLI commands
     """
     url = DNAC_URL + '/api/v1/network-device-poller/cli/legit-reads'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     response_json = response.json()
     cli_list = response_json['response']
@@ -905,7 +920,7 @@ def get_content_file_id(file_id, dnac_jwt_token):
     :return: file
     """
     url = DNAC_URL + '/api/v1/file/' + file_id
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False, stream=True)
     response_json = response.json()
     return response_json
@@ -931,7 +946,7 @@ def get_output_command_runner(command, device_name, dnac_jwt_token):
         "timeout": 0
         }
     url = DNAC_URL + '/api/v1/network-device-poller/cli/read-request'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.post(url, data=json.dumps(payload), headers=header, verify=False)
     response_json = response.json()
     task_id = response_json['response']['taskId']
@@ -961,7 +976,7 @@ def get_all_configs(dnac_jwt_token):
     :return: Return all config files in a list
     """
     url = DNAC_URL + '/api/v1/network-device/config'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     config_json = response.json()
     config_files = config_json['response']
@@ -977,7 +992,7 @@ def get_device_config(device_name, dnac_jwt_token):
     """
     device_id = get_device_id_name(device_name, dnac_jwt_token)
     url = DNAC_URL + '/api/v1/network-device/' + device_id + '/config'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     config_json = response.json()
     config_file = config_json['response']
@@ -1014,7 +1029,7 @@ def check_ipv4_address_configs(ipv4_address, dnac_jwt_token):
     :return: True/False
     """
     url = DNAC_URL + '/api/v1/network-device/config'
-    header = {'content-type': 'application/json', 'Cookie': dnac_jwt_token}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
     response = requests.get(url, headers=header, verify=False)
     config_json = response.json()
     config_files = config_json['response']
@@ -1078,6 +1093,131 @@ def check_ipv4_duplicate(config_file):
         return False
 
 
-#dnac_token = get_dnac_jwt_token(DNAC_AUTH)
-#print(dnac_token)
-#print(deploy_template('Config_Rollback','PartnerSummit','NYC-9300',dnac_token))
+def get_device_health(device_name, epoch_time, dnac_jwt_token):
+    """
+    This function will call the device health intent API and return device management interface IPv4 address,
+    serial number, family, software version, device health score, ... for the device with the name {device_name}
+    :param device_name: device hostname
+    :param epoch_time: epoch time including msec
+    :param dnac_jwt_token: DNA C token
+    :return: detailed network device information
+    """
+    device_id = get_device_id_name(device_name, dnac_jwt_token)
+    url = DNAC_URL + '/dna/intent/api/v1/device-detail?timestamp=' + str(epoch_time) + '&searchBy=' + device_id
+    url += '&identifier=uuid'
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    device_detail_json = response.json()
+    device_detail = device_detail_json['response']
+    return device_detail
+
+
+def pnp_get_device_count(device_state, dnac_jwt_token):
+    """
+    This function will return the count of the PnP devices in the state {state}
+    :param device_state: device state, example 'Unclaimed'
+    :param dnac_jwt_token: DNA C token
+    :return: device count
+    """
+    url = DNAC_URL + '/dna/intent/api/v1/onboarding/pnp-device/count'
+    payload = {'state': device_state}
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
+    response = requests.get(url, headers=header, data=json.dumps(payload), verify=False)
+    pnp_device_count = response.json()
+    return pnp_device_count['response']
+
+
+def pnp_get_device_list(dnac_jwt_token):
+    """
+    This function will retrieve the PnP device list info
+    :param dnac_jwt_token: DNA C token
+    :return: PnP device info
+    """
+    url = DNAC_URL + '/dna/intent/api/v1/onboarding/pnp-device'
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    pnp_device_json = response.json()
+    return pnp_device_json
+
+
+def pnp_claim_ap_site(device_id, floor_id, rf_profile, dnac_jwt_token):
+    """
+    This function will delete claim the AP with the {device_id} to the floor with the {floor_id}
+    :param device_id: Cisco DNA C device id
+    :param floor_id: Cisco DNA C floor id
+    :param rf_profile: RF profile - options - "LOW", "TYPICAL", "HIGH"
+    :param dnac_jwt_token: Cisco DNA C token
+    :return:
+    """
+    payload = {
+        "type": "AccessPoint",
+        "siteId": floor_id,
+        "deviceId": device_id,
+        "rfProfile": rf_profile
+        }
+    url = DNAC_URL + '/dna/intent/api/v1/onboarding/pnp-device/site-claim'
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
+    response = requests.post(url, headers=header, data=json.dumps(payload), verify=False)
+    claim_status_json = response.json()
+    claim_status = claim_status_json['response']
+    return claim_status
+
+
+def pnp_delete_provisioned_device(device_id, dnac_jwt_token):
+    """
+    This function will delete the provisioned device with the {device_id} from the PnP database
+    :param device_id: Cisco DNA C device id
+    :param dnac_jwt_token: Cisco DNA C token
+    :return:
+    """
+    url = DNAC_URL +'/dna/intent/api/v1/onboarding/pnp-device/' + device_id
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
+    response = requests.delete(url, headers=header, verify=False)
+    delete_status = response.json()
+    return delete_status
+
+
+def pnp_get_device_info(device_id, dnac_jwt_token):
+    """
+    This function will get the details for the a PnP device with the {device_id} from the PnP database
+    :param device_id: Cisco DNA C device id
+    :param dnac_jwt_token: Cisco DNA C token
+    :return:
+    """
+    url = DNAC_URL + '/api/v1/onboarding/pnp-device/' + device_id
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    device_info_json = response.json()
+    device_info = device_info_json['deviceInfo']
+    return device_info
+
+
+def get_physical_topology(ip_address, dnac_jwt_token):
+    """
+    This function will retrieve the physical topology for the device/client with the {ip_address}
+    :param ip_address: device/interface IP address
+    :param dnac_jwt_token: Cisco DNA C token
+    :return: topology info - connected device hostname and interface
+    """
+    url = DNAC_URL + '/api/v1/topology/physical-topology'
+    header = {'content-type': 'application/json', 'x-auth-token': dnac_jwt_token}
+    response = requests.get(url, headers=header, verify=False)
+    topology_json = response.json()['response']
+    topology_nodes = topology_json['nodes']
+    topology_links = topology_json['links']
+
+    # try to identify the physical topology
+    for link in topology_links:
+        try:
+            if link['startPortIpv4Address'] == ip_address:
+                connected_port = link['endPortName']
+                connected_device_id = link['target']
+                for node in topology_nodes:
+                    if node['id'] == connected_device_id:
+                        connected_device_hostname = node['label']
+                break
+        except:
+            connected_port = None
+            connected_device_hostname = None
+    return connected_device_hostname, connected_port
+

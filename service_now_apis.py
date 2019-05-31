@@ -1,24 +1,23 @@
+#!/usr/bin/env python3
 
 # developed by Gabi Zapodeanu, TSA, GPO, Cisco Systems
 
+
 # This file contains the ServiceNow functions to be used during the demo
 
-
 import requests
-import urllib3
 import json
-
-
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
+import utils
 
 from config import SNOW_ADMIN, SNOW_DEV, SNOW_PASS, SNOW_URL
 
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)  # Disable insecure https warnings
 
 
 # users roles :
-# SNOW_ADMIN = Admin role
-# SNOW_DEV = Device user role
+# SNOW_ADMIN = Application Admin
+# SNOW_DEV = Device REST API Calls
 
 
 def get_last_incidents_list(incident_count):
@@ -78,13 +77,15 @@ def create_incident(description, comment, username, severity):
     caller_sys_id = get_user_sys_id(username)
     url = SNOW_URL + '/table/incident'
     payload = {'short_description': description,
-               'comments': (comment + ', created using APIs by caller ' + username),
+               'comments': (comment + '\n\nCreated using APIs by caller: ' + username),
                'caller_id': caller_sys_id,
-               'urgency': severity
+               'urgency': severity,
+               'priority': severity
                }
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    response = requests.post(url, auth=(SNOW_ADMIN, SNOW_PASS), data=json.dumps(payload), headers=headers)
+    response = requests.post(url, auth=(username, SNOW_PASS), data=json.dumps(payload), headers=headers)
     incident_json = response.json()
+
     return incident_json['result']['number']
 
 
@@ -98,14 +99,10 @@ def update_incident(incident, comment, username):
     caller_sys_id = get_user_sys_id(username)
     incident_sys_id = get_incident_sys_id(incident)
     url = SNOW_URL + '/table/incident/' + incident_sys_id
-    print(url)
-    payload = {'comments': (comment + ', updated using APIs by caller ' + username),
+    payload = {'comments': (comment + '\n\nUpdated using APIs by caller: ' + username),
                'caller_id': caller_sys_id}
-    print(payload)
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    response = requests.patch(url, auth=(SNOW_ADMIN, SNOW_PASS), data=json.dumps(payload), headers=headers)
-    print(response.text)
-    print(response.status_code)
+    response = requests.patch(url, auth=(username, SNOW_PASS), data=json.dumps(payload), headers=headers)
 
 
 def get_incident_sys_id(incident):
@@ -129,18 +126,14 @@ def close_incident(incident, username):
     :return: status code
     """
     incident_id = get_incident_sys_id(incident)
-    print('Incident id: ', incident_id)
     caller_id = get_user_sys_id(username)
-    print('User Id: ', caller_id)
     url = SNOW_URL + '/table/incident/' + incident_id
     payload = {'close_code': 'Closed/Resolved by Caller',
                'state': '7',
                'caller_id': caller_id,
-               'close_notes': ('Closed using APIs by the user: ' + username)}
+               'close_notes': ('Closed using APIs by caller: ' + username)}
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    response = requests.put(url, auth=(SNOW_ADMIN, SNOW_PASS), data=json.dumps(payload), headers=headers)
-    print(response.status_code)
-    return response.status_code
+    response = requests.put(url, auth=(username, SNOW_PASS), data=json.dumps(payload), headers=headers)
 
 
 def get_user_sys_id(username):
@@ -151,7 +144,7 @@ def get_user_sys_id(username):
     """
     url = SNOW_URL + '/table/sys_user?sysparm_limit=1&name=' + username
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    response = requests.get(url, auth=(SNOW_ADMIN, SNOW_PASS), headers=headers)
+    response = requests.get(url, auth=(username, SNOW_PASS), headers=headers)
     user_json = response.json()
     return user_json['result'][0]['sys_id']
 
@@ -166,7 +159,7 @@ def get_incident_comments(incident):
     url = SNOW_URL + '/table/sys_journal_field?sysparm_query=element_id=' + incident_sys_id
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     response = requests.get(url, auth=(SNOW_ADMIN, SNOW_PASS), headers=headers)
-    comments_json = response.json()
+    comments_json = response.json()['result']
     return comments_json
 
 
@@ -183,4 +176,16 @@ def delete_incident(incident):
     return response.status_code
 
 
-# create_incident('TEST with API', 'API', 'DevNet Create', '1')
+def find_comment(incident, comment):
+    """
+    Find if any of the existing comments from the {incident} matches exactly the {comment}
+    :param incident: incident number
+    :param comment: comment string to serach for
+    :return: {True} if comment exist, {False} if not
+    """
+    comments_list = get_incident_comments(incident)
+    for comment_info in comments_list:
+        if comment == comment_info['value']:
+            return True
+    return False
+

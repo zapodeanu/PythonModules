@@ -15,6 +15,7 @@ import os
 import os.path
 import socket  # needed for IPv4 validation
 import re  # needed for regular expressions matching
+import subprocess  # needed for ping tool
 
 from PIL import Image, ImageDraw, ImageFont  # needed for the image processing
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -141,3 +142,29 @@ def identify_ipv4_address(configuration):
     return ipv4_list
 
 
+def ping_return_code(hostname):
+    """
+    Use the ping utility to attempt to reach the host. We send 5 packets
+    ('-c 5') and wait 250 milliseconds ('-W 250') for a response. The function
+    returns the return code from the ping utility.
+    It will also save the output to the file {ping_hostname}
+    :param hostname: hostname or the IPv4 address of the device to ping
+    """
+    ret_code = subprocess.call(['ping', '-c', '5', '-W', '250', hostname],
+                               stdout=open('ping_' + hostname, 'w'))
+    if ret_code == 0:
+        return_code = 'Success'
+    elif ret_code == 2:
+        return_code = 'Failed'
+    else:
+        return_code = 'Unknown'
+    return return_code
+
+
+def get_epoch_current_time():
+    """
+    This function will return the epoch time for the {timestamp}, UTC time format, for current time
+    :return: epoch time including msec
+    """
+    epoch = time.time()*1000
+    return int(epoch)
